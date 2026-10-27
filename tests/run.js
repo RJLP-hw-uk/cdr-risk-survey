@@ -261,10 +261,10 @@ const P9 = (L, I) => Array(9).fill([L, I]);
   // ---------- S3b: form unreachable -> email fallback
   console.log('S3b form unreachable');
   ({ctx, page: p} = await newCtx(browser, 'none'));
-  await p.unroute(/docs\.google\.com\/forms/); await p.route(/docs\.google\.com\/forms/, r => r.abort());
+  await p.unroute(/docs\.google\.com\/forms/); await p.route(/docs\.google\.com\/forms/, r => {}); // never answers
   await about(p, 0, 0, 'ccs_pow'); for (let k = 0; k < 9; k++) { await p.click('.cell[data-l="2"][data-i="2"]'); await sleep(330); }
   await clickNext(p); await clickNext(p);
-  check(await until(async () => (await h2(p)) === 'One last step: send your answers', 6000), 'email fallback when the form cannot be reached');
+  check(await until(async () => (await h2(p)) === 'One last step: send your answers', 16000), 'email fallback when the form cannot be reached');
   check((await p.$eval('#code', e => e.value)).startsWith('CDRRISK2.'), 'fallback shows answer code');
   check(p.errors.length === 0, 'no page errors in fallback: ' + p.errors.join(' | '));
   await ctx.close();

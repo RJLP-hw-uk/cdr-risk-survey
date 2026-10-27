@@ -616,6 +616,22 @@ td.num{text-align:center}
     var o = JSON.parse(new TextDecoder().decode(b)); if (!o || o.v !== 2 || !o.ratings || !o.ratings.sa) throw new Error("Incomplete answer code.");
     return o;
   }
+  // Google Forms refuses background (fetch) posts from other sites, so answers are sent as an ordinary form
+  // submission into a hidden frame. The reply cannot be read across sites; "saved" means the submission completed.
+  function postForm(fields){
+    return new Promise(function(resolve){
+      var name = "sink" + Date.now().toString(36), done = false;
+      var ifr = document.createElement("iframe"); ifr.name = name; ifr.title = "submission"; ifr.style.display = "none"; ifr.setAttribute("aria-hidden", "true");
+      var f = document.createElement("form"); f.method = "POST"; f.action = FORM_ACTION; f.target = name; f.style.display = "none"; f.acceptCharset = "UTF-8";
+      fields.forEach(function(kv){ var i = document.createElement("input"); i.type = "hidden"; i.name = kv[0]; i.value = kv[1]; f.appendChild(i); });
+      function finish(ok){ if (done) return; done = true; clearTimeout(tm); setTimeout(function(){ try { ifr.remove(); f.remove(); } catch (e) {} }, 1000); resolve(ok); }
+      var tm = setTimeout(function(){ finish(false); }, 12000);
+      ifr.addEventListener("load", function(){ if (ifr.dataset.armed === "1") finish(true); });
+      document.body.appendChild(ifr); document.body.appendChild(f);
+      ifr.dataset.armed = "1";
+      try { f.submit(); } catch (e) { finish(false); }
+    });
+  }
   var submitting = false;
   async function submit(){
     if (submitting) return; submitting = true;
@@ -630,16 +646,10 @@ td.num{text-align:center}
     }
     if (saved) S.docId = id;
     var code = encode(data), via = saved ? "page" : null;
-    if (!saved && FORM_ACTION && window.fetch) {
+    if (!saved && FORM_ACTION) {
       var tech = data.catName + (data.integration ? " + " + data.integration.name : "") + (data.ref ? " [" + data.ref + "]" : "");
-      for (var t = 0; t < 2 && !saved; t++) {
-        try {
-          var body = new URLSearchParams(); body.append(FORM_CODE, code); body.append(FORM_TECH, tech.slice(0, 300));
-          var ctl = window.AbortController ? new AbortController() : null, tm = ctl ? setTimeout(function(){ ctl.abort(); }, 15000) : null;
-          await fetch(FORM_ACTION, {method:"POST", mode:"no-cors", body:body, signal:ctl ? ctl.signal : undefined});
-          if (tm) clearTimeout(tm); saved = true; via = "form";
-        } catch (e) { await new Promise(function(r){ setTimeout(r, 800 + Math.random() * 700); }); }
-      }
+      saved = await postForm([[FORM_CODE, code], [FORM_TECH, tech.slice(0, 300)]]);
+      if (saved) via = "form";
     }
     S.done = {saved:saved, via:via, code:code, at:data.submittedAt};
     submitting = false; persist(); render(); toTop();
