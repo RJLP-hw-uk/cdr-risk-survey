@@ -29,7 +29,14 @@
 }
 *,*::before,*::after{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font:400 16px/1.5 var(--f-body);font-variant-numeric:tabular-nums}
-.wrap{max-width:620px;margin:0 auto;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:12px 16px}
+.shell{max-width:620px;margin:0 auto;height:100vh;height:100dvh;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-top:12px}
+html,body{height:100%;margin:0}
+body{overflow:hidden}
+.scroll{min-height:0;overflow-y:auto;overscroll-behavior:contain}
+#foot{padding-block:10px max(12px, env(safe-area-inset-bottom, 0px))}
+#foot:empty{padding:0}
+.qblock{display:grid;gap:4px;align-content:start;min-height:7.4rem}
+@media (max-width:480px){.qblock{min-height:8.6rem}}
 h1,h2{font-family:var(--f-display);text-wrap:balance;margin:0}
 h1{font-size:1.5rem;line-height:1.15}
 h2{font-size:1.3rem;line-height:1.2}
@@ -51,15 +58,15 @@ header.mast{display:flex;gap:12px;align-items:center;justify-content:space-betwe
 .opt input:checked + label{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .opt input:checked + label small{color:var(--accent-ink);opacity:.85}
 .opt input:focus-visible + label{outline:2px solid var(--accent);outline-offset:2px}
-.group{font-size:.76rem;font-weight:700;color:var(--ink-2);letter-spacing:.06em;text-transform:uppercase;margin-top:4px}
 input[type=text]{width:100%;font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);padding:10px 12px}
 input[type=text]:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-.nav{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-top:12px}
+.nav{display:flex;gap:10px;align-items:center;justify-content:space-between}
+.nav .btn{min-width:7.5rem;text-align:center}
+@media (max-width:480px){h2{font-size:1.12rem}.qblock .muted.small{font-size:.8rem}h1{font-size:1.25rem}}
 .opts.cats{grid-template-columns:1fr;gap:5px}
 @media (min-width:560px){.opts.cats{grid-template-columns:1fr 1fr}}
 .opts.cats .opt label{flex-direction:column;align-items:flex-start;gap:0;padding:5px 12px;line-height:1.2}
 .opts.cats .opt label small{text-align:left}
-.matrix{margin-inline:auto}
 .wrows{display:grid;gap:6px}
 .wrow{display:grid;grid-template-columns:minmax(0,9.5rem) minmax(0,1fr) 1.8rem 28px;gap:10px;align-items:center}
 .info{width:26px;height:26px;border-radius:50%;border:1px solid var(--ink-2);background:transparent;color:var(--ink-2);font:700 .8rem/1 var(--f-body);font-style:italic;cursor:pointer}
@@ -71,13 +78,7 @@ input[type=text]:focus-visible{outline:2px solid var(--accent);outline-offset:1p
 .wscale span:nth-child(2){display:flex;justify-content:space-between;position:relative}
 .wscale .mid{position:absolute;left:calc(44.4% - 2px)}
 .wrow .wn{font-weight:700;font-size:.9rem;line-height:1.2}
-.wbar{height:10px;border-radius:3px;background:var(--rule);overflow:hidden}
-.wbar i{display:block;height:100%;background:var(--accent)}
 .wv{text-align:right;font-weight:700}
-.step{width:36px;height:36px;border-radius:var(--r);border:1px solid var(--rule);background:transparent;cursor:pointer;font-weight:700;font-size:1.1rem;line-height:1}
-.step:disabled{opacity:.35;cursor:not-allowed}
-.step:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.left{font-weight:700}.left.ok{color:var(--accent)}
 @media (max-width:420px){.wrow,.wscale{grid-template-columns:minmax(0,6.5rem) minmax(0,1fr) 1.6rem 28px}}
 button{font:inherit;color:inherit}
 .btn{font-weight:700;padding:10px 18px;border-radius:var(--r);border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);cursor:pointer;min-height:44px}
@@ -95,18 +96,24 @@ button{font:inherit;color:inherit}
 .dot{font-size:.68rem;font-weight:700;letter-spacing:.03em;padding:3px 6px;border-radius:4px;border:1px solid var(--rule);background:transparent;cursor:pointer;color:var(--ink-2)}
 .dot.done{background:var(--chip);color:var(--chip-ink);border-color:var(--chip)}
 .dot.cur{outline:2px solid var(--accent);outline-offset:1px}
-.matrix{display:grid;grid-template-columns:auto repeat(5,minmax(0,1fr));gap:3px}
+.matrix{--lab:6.6rem;--gap:3px;
+  --cell:clamp(40px, min(calc((min(100vw, 620px) - 70px - var(--lab) - 5 * var(--gap)) / 5), calc((100vh - 470px) / 5.3)), 66px);
+  display:grid;grid-template-columns:var(--lab) repeat(5,var(--cell));gap:var(--gap);width:max-content;margin-inline:auto}
+@supports (height:100dvh){.matrix{--cell:clamp(40px, min(calc((min(100vw, 620px) - 70px - var(--lab) - 5 * var(--gap)) / 5), calc((100dvh - 470px) / 5.3)), 66px)}}
+@media (max-width:480px){.matrix{--lab:4.4rem}}
 .ylab,.xlab{font-size:.72rem;color:var(--ink-2);line-height:1.15;display:flex;align-items:center}
 .ylab{justify-content:flex-end;text-align:right;padding-right:6px}
+@media (max-width:480px){.ylab{padding-right:4px}}
 .xlab{flex-direction:column;justify-content:flex-start;text-align:center;padding-top:3px}
 .ylab b,.xlab b{color:var(--ink)}
 .axis{font-size:.82rem;font-weight:700;color:var(--ink-2)}
-.cell{aspect-ratio:1/1;max-width:100%;min-height:44px;border:1px solid transparent;border-radius:4px;padding:3px;display:flex;flex-wrap:wrap;align-content:flex-start;gap:2px;cursor:pointer}
+.cell{width:var(--cell);height:var(--cell);overflow:hidden;border:1px solid transparent;border-radius:4px;padding:3px;display:flex;flex-wrap:wrap;align-content:flex-start;gap:2px;cursor:pointer}
 .cell.low{background:var(--h-low)}.cell.mid{background:var(--h-mid)}.cell.high{background:var(--h-high)}
 .cell:hover{border-color:var(--ink-2)}
 .cell.picked{border:2px solid var(--ink)}
 .ghost-chip{font-size:.6rem;font-weight:700;padding:0 3px;border-radius:3px;border:1px solid var(--ink-2);color:var(--ink-2);line-height:1.4}
 .ghost-chip.sa{border-style:dashed}
+.ghost-chip.more{border-color:transparent}
 .cell.picked .pick{font-size:.66rem;font-weight:700;padding:1px 4px;border-radius:3px;background:var(--chip);color:var(--chip-ink);line-height:1.3}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
 
@@ -120,6 +127,12 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .code-box{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.78rem;word-break:break-all}
 .contact{font-weight:700;user-select:all}
 
+.kinds{display:flex;flex-wrap:wrap;gap:6px}
+.kind{font-size:.76rem;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--ink)}
+.ref{display:grid;gap:4px}
+.ref label{font-size:.86rem;font-weight:700}
+.saved-note{font-size:.9rem;color:var(--ink-2)}
+
 /* owner results */
 #results{margin-bottom:20px}
 .tbl-wrap{overflow-x:auto;border:1px solid var(--rule);border-radius:var(--r)}
@@ -127,16 +140,22 @@ table{border-collapse:collapse;width:100%;font-size:.84rem}
 th,td{padding:7px 9px;border-bottom:1px solid var(--rule);text-align:left;white-space:nowrap}
 th{font-size:.74rem;color:var(--ink-2)}
 td.num{text-align:center}
+.rlist{display:grid;gap:4px;max-height:320px;overflow-y:auto}
+.ritem{display:flex;gap:8px;align-items:center;justify-content:space-between;font-size:.86rem;padding:6px 8px;border:1px solid var(--rule);border-radius:var(--r)}
+.ritem .t{min-width:0;overflow-wrap:anywhere}
 </style>
 
-<div class="wrap">
+<div class="shell">
   <header class="mast">
     <h1>Carbon removal risk survey</h1>
     <button class="btn ghost sm" id="toggle-results" type="button" hidden>Responses</button>
   </header>
-  <section id="results" hidden></section>
   <div class="bar" id="bar" aria-hidden="true"><i></i></div>
-  <main id="app" aria-live="polite"></main>
+  <div class="scroll" id="scroll">
+    <section id="results" hidden></section>
+    <main id="app" aria-live="polite"></main>
+  </div>
+  <footer id="foot"></footer>
 </div>
 
 <script>
@@ -145,12 +164,15 @@ td.num{text-align:center}
   var CONTACT = "r.lee_pereira@hw.ac.uk";
   // Pre-filled form link for respondents who cannot save on this page (e.g. public-link visitors).
   // Paste the form's pre-filled URL up to and including "entry.NNN=" ; the answer code is appended. Leave "" to use email only.
-  var FORM_PREFILL = ""; // no visible form: if the background send fails, respondents email their code
+  var FORM_PREFILL = "";
   // Responses are posted to this Google Form (answer code + technology label); the linked Google Sheet is the record.
   var FORM_ACTION = "https://docs.google.com/forms/d/e/1FAIpQLSdruyXEiuOkWm1lawvzbsqiQWAm9CR6jVdCOMgSVg0erQ7e5w/formResponse", FORM_CODE = "entry.269220021", FORM_TECH = "entry.530102048";
+  // Interview mode (respondent reference + "Start next response"): open the page with #interview, or be an editor on claude.ai.
+  function INTERVIEW(){ return /(^|[#&])interview(\b|$)/.test(location.hash || ""); }
+  window.addEventListener("hashchange", function(){ render(); });
 
   // ---------------- content
-  // Each category: example phrases per risk (standalone), one integration with overrides, and the model cases it maps to.
+  // Each category: example phrases per risk (standalone) and, where the model has a pair, one integration with overrides.
   var GENERIC = {
     tec:"the equipment captures less CO₂, wears out sooner, or uses more energy than designed",
     res:"site conditions differ from the plan, or the removal cannot be measured accurately",
@@ -162,7 +184,7 @@ td.num{text-align:center}
     soc:"residents or local groups object to the project"
   };
   var CATS = [
-    {id:"dac_ss", group:"DAC", name:"DAC: solid sorbent", d:"", sa:"DAC_SS",
+    {id:"dac_ss", group:"DAC", name:"DAC: solid sorbent", d:"sorbent filters, CO₂ released by heat", sa:"DAC_SS",
       ex:{tec:"the sorbent captures less CO₂, degrades faster, or the plant uses more energy than designed",
           res:"humidity and temperature at the site reduce capture, or storage takes less CO₂ than expected",
           pol:"a tax credit such as 45Q, a grant or an eligibility rule",
@@ -171,13 +193,13 @@ td.num{text-align:center}
           cpt:"a credit buyer cancels an offtake agreement",
           per:"a CO₂ storage or pipeline permit",
           soc:"residents object to the plant, its power demand or the CO₂ pipeline"},
-      int:{name:"Solid-sorbent DAC at a data centre", d:"The sorbent is regenerated with server waste heat, and the data centre gets a cooling service.", model:"DAC_DC",
+      int:{name:"DAC at a data centre", kind:["Co-location","Co-product"], d:"Runs on the data centre’s waste heat and sells it a cooling service.", model:"DAC_DC",
         ex:{tec:"regenerating with low-temperature server heat captures less CO₂ than designed",
             pri:", or the data centre pays less for the cooling service",
             cur:"server downtime stops capture, or credits are deducted or delayed",
             cpt:"the data-centre operator ends the heat agreement, or a credit buyer cancels",
             soc:"residents object to the combined site’s power or water use"}}},
-    {id:"dac_ls", group:"DAC", name:"DAC: liquid solvent", d:"", sa:"DAC_LS",
+    {id:"dac_ls", group:"DAC", name:"DAC: liquid solvent", d:"solvent regenerated at high heat", sa:"DAC_LS",
       ex:{tec:"the solvent loop or calciner underperforms, or one failure stops the whole plant",
           res:"hot, dry or cold conditions raise water and energy use or reduce capture",
           pol:"a tax credit such as 45Q, a grant or an eligibility rule",
@@ -195,7 +217,7 @@ td.num{text-align:center}
           cpt:"a credit buyer cancels an offtake agreement",
           per:"a CO₂ storage or pipeline permit",
           soc:"residents object to the plant or its power demand"}, int:null},
-    {id:"beccs", group:"Biomass", name:"BECCS", d:"", sa:"BIO_SA",
+    {id:"beccs", group:"Biomass", name:"BECCS", d:"bioenergy with capture and storage", sa:"BIO_SA",
       ex:{tec:"the capture unit on biomass flue gas captures less, or its solvent degrades faster",
           res:"biomass supply or quality varies, or storage takes less CO₂ than expected",
           pri:", or electricity and heat sell for less",
@@ -205,12 +227,12 @@ td.num{text-align:center}
           cpt:"a credit buyer or biomass supplier pulls out",
           per:"a CO₂ storage, pipeline or emissions permit",
           soc:"local groups oppose the biomass sourcing or the CO₂ pipeline"},
-      int:{name:"BECCS at an ethanol plant", d:"The nearly pure CO₂ released when crops are fermented to ethanol is captured and stored.", model:"BECCS_ETOH",
+      int:{name:"BECCS at an ethanol plant", kind:["Co-location","Co-product"], d:"Captures the near-pure CO₂ the ethanol plant already releases, so the plant can sell lower-carbon fuel.", model:"BECCS_ETOH",
         ex:{tec:"compressing and drying the fermentation CO₂ underperforms",
             pri:", or the ethanol plant earns less",
             cur:"the ethanol plant stops running, or credits are deducted or delayed",
             cpt:"the ethanol plant owner closes or ends the agreement, or a credit buyer cancels"}}},
-    {id:"biochar", group:"Biomass", name:"Biochar", d:"", sa:"BC_SA",
+    {id:"biochar", group:"Biomass", name:"Biochar", d:"charred biomass stored in soil", sa:"BC_SA",
       ex:{tec:"the pyrolysis unit produces less biochar or breaks down more often",
           res:"the carbon in the biochar is less stable, or the feedstock varies more than planned",
           pri:", or biochar and energy sell for less",
@@ -220,12 +242,12 @@ td.num{text-align:center}
           cpt:"a credit buyer, biochar buyer or feedstock supplier pulls out",
           per:"an emissions or waste-handling permit",
           soc:"neighbours object to smoke, smell or truck traffic"},
-      int:{name:"Biochar from sludge at a wastewater plant", d:"Sewage sludge is treated by pyrolysis, cutting the plant’s disposal costs.", model:"BC_WWTP",
+      int:{name:"Biochar at a wastewater plant", kind:["Co-location","Co-product"], d:"Turns the plant’s sewage sludge into biochar on site, saving the plant the cost of disposing of the sludge.", model:"BC_WWTP",
         ex:{res:"the sludge yields less stable carbon than expected",
             pri:", or the avoided sludge-disposal cost is lower",
             cpt:"the water utility ends the agreement, or a credit buyer cancels",
             per:"a permit to treat sewage sludge"}}},
-    {id:"biooil", group:"Biomass", name:"Bio-oil injection", d:"", sa:"BO_SA",
+    {id:"biooil", group:"Biomass", name:"Bio-oil injection", d:"biomass oil injected underground", sa:"BO_SA",
       ex:{tec:"the pyrolysis unit yields less oil or breaks down more often",
           res:"the oil holds less carbon than expected, or the well takes less oil",
           pri:", or by-products such as biochar sell for less",
@@ -235,11 +257,11 @@ td.num{text-align:center}
           cpt:"a credit buyer or biomass supplier pulls out",
           per:"an underground injection permit",
           soc:"residents object to truck traffic or the injection site"},
-      int:{name:"Bio-oil from sawmill residues into existing wells", d:"Sawmill waste is converted to oil and injected into wells that already hold permits.", model:"BO_WELL",
+      int:{name:"Bio-oil from sawmill waste", kind:["Existing market","Co-location"], d:"Buys waste wood from sawmills and injects the oil into wells that already have permits.", model:"BO_WELL",
         ex:{pri:", or the sawmill pays less to get rid of its residues",
             cpt:"the sawmill stops supplying residues, or a credit buyer cancels",
             per:"an amendment to the existing well permit"}}},
-    {id:"erw", group:"Rock", name:"Enhanced rock weathering", d:"", sa:"ERW_CR",
+    {id:"erw", group:"Rock", name:"Enhanced rock weathering", d:"crushed rock spread on farmland", sa:"ERW_CR",
       ex:{tec:"crushing, transport or spreading costs more or works less well than planned",
           res:"the rock dissolves more slowly, or the removal cannot be measured accurately",
           pri:", or farmers pay less for the rock",
@@ -249,10 +271,10 @@ td.num{text-align:center}
           cpt:"a credit buyer, quarry or farmer pulls out",
           per:"a quarrying or soil-application permit",
           soc:"farmers or neighbours worry about dust or metals in the soil"},
-      int:{name:"Rock weathering through farming", d:"The rock is sold to farmers as a soil improver and spread with their own equipment.", model:"ERW_AG",
+      int:{name:"Rock weathering sold to farmers", kind:["Co-product","Existing market"], d:"Sells the rock to farmers as a soil improver through farm-supply channels, so they share the cost in return for better yields.", model:"ERW_AG",
         ex:{pri:", or crop-yield gains are smaller than farmers expect",
             cpt:"farmers stop buying the rock, or a credit buyer cancels"}}},
-    {id:"cew", group:"Ocean", name:"OAE: coastal enhanced weathering", d:"", sa:"CEW_SA",
+    {id:"cew", group:"Ocean", name:"OAE: coastal enhanced weathering", d:"olivine sand on beaches", sa:"CEW_SA",
       ex:{tec:"placement equipment or the olivine supply performs worse than planned",
           res:"olivine dissolves more slowly in the sea, or the removal cannot be measured accurately",
           pol:"a removal credit or a marine rule such as the London Protocol",
@@ -261,11 +283,11 @@ td.num{text-align:center}
           cpt:"a credit buyer or the olivine supplier pulls out",
           per:"a marine placement permit",
           soc:"residents or beach users object, for example over nickel or sand colour"},
-      int:{name:"Coastal weathering in beach nourishment", d:"Olivine is mixed into the sand that councils already buy to rebuild beaches.", model:"CEW_BN",
+      int:{name:"Coastal weathering in beach nourishment", kind:["Co-product","Existing market"], d:"Mixes olivine into the sand that councils already buy and place to rebuild beaches.", model:"CEW_BN",
         ex:{pri:", or councils pay less for the sand",
             cpt:"the council or beach programme drops olivine, or a credit buyer cancels",
             per:"approval to add olivine to the beach-fill permit"}}},
-    {id:"oae_ec", group:"Ocean", name:"OAE: electrochemical", d:"", sa:"OAE_SA",
+    {id:"oae_ec", group:"Ocean", name:"OAE: electrochemical", d:"seawater split into acid and alkali", sa:"OAE_SA",
       ex:{tec:"electrolysis stacks or membranes underperform or wear out",
           res:"seawater takes up less CO₂ than modelled, or the removal cannot be measured accurately",
           pri:", or by-products such as acid or hydrogen sell for less",
@@ -275,7 +297,7 @@ td.num{text-align:center}
           cpt:"a credit buyer or by-product buyer pulls out",
           per:"a discharge permit",
           soc:"fishers, residents or environmental groups oppose the discharge"},
-      int:{name:"Electrochemical OAE at a desalination plant", d:"The plant uses the desalination plant’s seawater intake, outfall and permits.", model:"OAE_DS",
+      int:{name:"Electrochemical OAE at a desalination plant", kind:["Co-location","Co-product"], d:"Treats the desalination plant’s leftover brine using its intake, outfall and power, and gives back acid and extra fresh water.", model:"OAE_DS",
         ex:{cur:"the desalination plant stops, which halts alkalinity production",
             con:"the treatment unit and connection to the existing intake cost more than planned",
             cpt:"the desalination operator ends the agreement, or a credit buyer cancels"}}},
@@ -288,12 +310,12 @@ td.num{text-align:center}
           cpt:"a credit buyer or the mineral supplier pulls out",
           per:"a discharge permit for the new outfall",
           soc:"fishers, residents or environmental groups oppose the discharge"},
-      int:{name:"Mineral alkalinity at a wastewater outfall", d:"Alkalinity is dosed into treated wastewater that is already discharged to the sea under the utility’s permit.", model:"MOAE_WW",
+      int:{name:"Mineral alkalinity at a wastewater outfall", kind:["Co-location"], d:"Adds alkalinity to treated wastewater that already flows to sea, using the water utility’s outfall and permit.", model:"MOAE_WW",
         ex:{cur:"the wastewater plant cuts its flow, which limits dosing",
             con:"the dosing unit at the existing outfall costs more than planned",
             cpt:"the water utility ends the agreement, or a credit buyer cancels",
             per:"approval to add alkalinity under the existing discharge permit"}}},
-    {id:"ccs_pow", group:"CCS", name:"CCS: power generation", d:"", sa:null,
+    {id:"ccs_pow", group:"CCS", name:"CCS: power generation", d:"capture at a gas or coal power plant", sa:null,
       q:{res:"Less CO₂ is captured and stored than planned", cur:"Captured CO₂ cannot be stored or credited"},
       ex:{tec:"the capture plant captures less CO₂ or uses more of the plant’s power than designed",
           res:"the storage site takes less CO₂ or injects more slowly than expected",
@@ -315,7 +337,7 @@ td.num{text-align:center}
           cpt:"the plant owner or storage operator fails to perform",
           per:"a storage licence or pipeline permit",
           soc:"residents object to the pipeline or the storage site"}, int:null},
-    {id:"ccs_h2", group:"CCS", name:"CCS: hydrogen production", d:"", sa:null,
+    {id:"ccs_h2", group:"CCS", name:"CCS: hydrogen production", d:"capture at a gas-based hydrogen plant", sa:null,
       q:{res:"Less CO₂ is captured and stored than planned", cur:"Captured CO₂ cannot be stored or credited"},
       ex:{tec:"the capture unit captures less CO₂ than designed",
           res:"the storage site takes less CO₂ or injects more slowly than expected",
@@ -326,7 +348,7 @@ td.num{text-align:center}
           cpt:"the hydrogen buyer or storage operator fails to perform",
           per:"a storage licence or pipeline permit",
           soc:"residents object to the pipeline or the storage site"}, int:null},
-    {id:"ccs_eor", group:"CCS", name:"CCS: enhanced oil recovery", d:"", sa:null,
+    {id:"ccs_eor", group:"CCS", name:"CCS: enhanced oil recovery", d:"CO₂ injected to produce more oil", sa:null,
       q:{res:"Less CO₂ is captured and stored than planned", cur:"Captured CO₂ cannot be stored or credited"},
       ex:{tec:"the capture unit captures less CO₂ than designed",
           res:"less of the injected CO₂ stays in the oil field than planned",
@@ -368,21 +390,27 @@ td.num{text-align:center}
   var RB = {}; RISKS.forEach(function(k){ RB[k.id] = k; });
 
   // ---------------- state
-  var KEY = "cdr-risk-survey-v3";
-  function blank(){ return {step:"q1", exp:null, sector:null, cat:null, otherName:"", otherInt:"", intSkip:false, ratings:{sa:{}, int:{}}, weights:{}, rankDone:false, comment:"", done:null}; }
+  var KEY = "cdr-risk-survey-v4";
+  function blank(){ return {step:"q1", exp:null, sector:null, cat:null, ratings:{sa:{}, int:{}}, weights:{}, rankDone:false, comment:"", ref:"", docId:null, rid:null, done:null}; }
+  function valid(p){
+    if (!p || typeof p !== "object" || !p.ratings || !p.ratings.sa || !p.ratings.int) return false;
+    if (p.cat != null && !CB[p.cat]) return false;
+    if (p.done && !p.cat) return false;
+    return true;
+  }
   var S = blank();
-  try { var raw = localStorage.getItem(KEY); if (raw) { var p = JSON.parse(raw); if (p && p.ratings && p.ratings.sa) S = Object.assign(blank(), p); } } catch(e) {}
+  try { var raw = localStorage.getItem(KEY); if (raw) { var p0 = JSON.parse(raw); if (valid(p0)) S = Object.assign(blank(), p0); } } catch(e) {}
   function persist(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} }
-  var db = null, uid = null, downloads = null;
+  var db = null, uid = null, downloads = null, isEditor = false;
+  function interviewer(){ return isEditor || INTERVIEW(); }
+  var foot = document.getElementById("foot"), scroller = document.getElementById("scroll");
+  function toTop(){ try { scroller.scrollTop = 0; } catch (e) {} }
 
   function cat(){ return S.cat ? CB[S.cat] : null; }
-  function catName(){ var c = cat(); return !c ? "" : c.id === "other" ? (S.otherName.trim() || "Other technology") : c.name; }
-  function intInfo(){
-    var c = cat(); if (!c) return null;
-    if (c.id === "other") return {name:S.otherInt.trim() || "Your integration", d:"", model:null, ex:{}};
-    return c.int;
-  }
-  function hasInt(){ var c = cat(); if (!c) return false; if (c.id === "other") return !S.intSkip; return !!c.int; }
+  function catName(){ var c = cat(); return c ? c.name : ""; }
+  function intInfo(){ var c = cat(); return c ? c.int : null; }
+  function hasInt(){ return !!intInfo(); }
+  function qText(k){ var c = cat(); return (c && c.q && c.q[k.k]) || k.q; }
   function example(scn, k){
     var c = cat(), base = (c && c.ex[k] != null) ? c.ex[k] : GENERIC[k];
     if (scn === "int") { var ii = intInfo(); if (ii && ii.ex && ii.ex[k] != null) base = ii.ex[k]; }
@@ -390,116 +418,94 @@ td.num{text-align:center}
   }
   function steps(){
     var a = ["q1","q2","q3"];
-    if (!S.cat) return a.concat(["review"]);
+    if (!S.cat) return a;
     RISKS.forEach(function(k){ a.push("sa:" + k.id); });
     if (hasInt()) { a.push("int"); RISKS.forEach(function(k){ a.push("int:" + k.id); }); }
     a.push("rank"); a.push("review"); return a;
   }
-  function count(scn){ var r = S.ratings[scn]; return RISKS.filter(function(k){ return r[k.id]; }).length; }
+  function count(scn){ var r = S.ratings[scn] || {}; return RISKS.filter(function(k){ return r[k.id]; }).length; }
   function sev(L, I){ var s = (L - 1) * (I - 1) / 16; return s < 0.19 ? "low" : s <= 0.5 ? "mid" : "high"; }
-  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+  function esc(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
 
   var app = document.getElementById("app");
+  var pending = null;   // auto-advance timer; cleared on every render so a late timer never moves the wrong screen
+  function later(fn, ms){ clearTimeout(pending); var at = S.step; pending = setTimeout(function(){ if (S.step === at && !S.done) fn(); }, ms); }
   function nav(backOk, nextLabel, nextOk){
     return '<div class="nav"><button class="btn ghost" id="back" type="button"' + (backOk ? "" : " disabled") + '>Back</button>' +
       '<span class="err" id="err"></span><button class="btn" id="next" type="button"' + (nextOk === false ? " disabled" : "") + '>' + (nextLabel || "Next") + '</button></div>';
   }
-  function bindNav(onNext){
+  function bindNav(onNext, onBack){
+    var nv = app.querySelector(".nav"); foot.innerHTML = ""; if (nv) foot.appendChild(nv);
     var b = document.getElementById("back"), n = document.getElementById("next");
-    if (b) b.addEventListener("click", function(){ go(-1); });
-    if (n) n.addEventListener("click", onNext || function(){ go(1); });
+    if (b) b.addEventListener("click", function(){ if (onBack) onBack(); go(-1); });
+    if (n) n.addEventListener("click", function(){ if (n.disabled) return; (onNext || function(){ go(1); })(); });
   }
 
   function render(){
+    clearTimeout(pending); foot.innerHTML = "";
     var st = steps(), i = st.indexOf(S.step);
     if (!S.done && i < 0) { S.step = "q1"; i = 0; }
     var bar = document.getElementById("bar");
     bar.hidden = !!S.done;
-    bar.firstChild.style.width = (S.done ? 100 : Math.round(100 * i / (st.length - 1))) + "%";
-    if (S.done) return renderDone();
-    if (S.step === "q1") return renderChoice("How many years have you worked in carbon removal or a related field?", "exp", EXP);
-    if (S.step === "q2") return renderChoice("Where do you work?", "sector", SECTOR);
-    if (S.step === "q3") return after(renderCat());
-    if (S.step === "int") return after(renderIntIntro());
-    if (S.step === "rank") return after(renderRank());
-    if (S.step === "review") return after(renderReview());
-    var parts = S.step.split(":"); return after(renderRisk(parts[0], parts[1]));
+    bar.firstChild.style.width = (S.done ? 100 : Math.round(100 * i / Math.max(1, st.length - 1))) + "%";
+    if (S.done) renderDone();
+    else if (S.step === "q1") renderChoice("How many years have you worked in carbon removal or a related field?", "exp", EXP);
+    else if (S.step === "q2") renderChoice("Where do you work?", "sector", SECTOR);
+    else if (S.step === "q3") renderCat();
+    else if (S.step === "int") renderIntIntro();
+    else if (S.step === "rank") renderRank();
+    else if (S.step === "review") renderReview();
+    else { var parts = S.step.split(":"); renderRisk(parts[0], parts[1]); }
   }
-  function after(){ fit(); }
-  // Shrink the likelihood x impact grid until the screen fits the window. On narrow phones the grid keeps a usable size and the page may scroll.
-  function fit(){
-    var m = app.querySelector(".matrix"); if (!m) return;
-    m.style.width = "";
-    var room = window.innerHeight - document.documentElement.scrollHeight;
-    if (room >= 0) return;
-    var h = m.offsetHeight, w = m.offsetWidth; if (!h) return;
-    var target = Math.max(window.innerWidth < 560 ? 240 : 200, Math.floor(w * (h + room - 4) / h));
-    if (target < w) m.style.width = target + "px";
-  }
-  var rz = null; window.addEventListener("resize", function(){ clearTimeout(rz); rz = setTimeout(fit, 120); });
-
   function renderChoice(title, field, list){
     var n = S.step === "q1" ? 1 : 2;
     app.innerHTML = '<div class="card"><span class="tag">About you · ' + n + ' of 3</span><h2>' + esc(title) + '</h2><div class="opts">' +
       list.map(function(v, i){ var id = field + i; return '<div class="opt"><input type="radio" name="' + field + '" id="' + id + '" value="' + i + '"' + (S[field] === i ? " checked" : "") + '><label for="' + id + '">' + esc(v) + '</label></div>'; }).join("") +
       '</div></div>' + nav(S.step !== "q1", "Next", S[field] != null);
-    app.querySelectorAll("input").forEach(function(el){ el.addEventListener("change", function(){ S[field] = +el.value; persist(); setTimeout(function(){ go(1); }, 180); }); });
+    app.querySelectorAll("input").forEach(function(el){ el.addEventListener("change", function(){
+      S[field] = +el.value; persist(); document.getElementById("next").disabled = false; later(function(){ go(1); }, 200);
+    }); });
     bindNav();
   }
 
   function renderCat(){
-    var groups = []; CATS.forEach(function(c){ if (groups.indexOf(c.group) < 0) groups.push(c.group); });
     app.innerHTML = '<div class="card"><span class="tag">About you · 3 of 3</span><h2>Which technology do you know best?</h2><p class="muted small">Pick one.</p><div class="opts cats">' +
       CATS.map(function(c){
         var id = "c-" + c.id;
         return '<div class="opt"><input type="radio" name="cat" id="' + id + '" value="' + c.id + '"' + (S.cat === c.id ? " checked" : "") + '><label for="' + id + '"><span>' + esc(c.name) + '</span>' + (c.d ? '<small>' + esc(c.d) + '</small>' : '') + '</label></div>';
-      }).join("") +
-      '</div><input type="text" id="other-name" maxlength="80" placeholder="Name of the technology" aria-label="Name of the other technology"' + (S.cat === "other" ? "" : " hidden") + '>' +
-      '</div>' + nav(true, "Next", canLeaveCat());
-    var on = document.getElementById("other-name"); on.value = S.otherName;
-    on.addEventListener("input", function(){ S.otherName = on.value; persist(); document.getElementById("next").disabled = !canLeaveCat(); });
+      }).join("") + '</div></div>' + nav(true, "Next", !!S.cat);
     app.querySelectorAll('input[name="cat"]').forEach(function(el){ el.addEventListener("change", function(){
-      if (S.cat && S.cat !== el.value) { S.ratings = {sa:{}, int:{}}; S.intSkip = false; S.otherInt = ""; }
-      S.cat = el.value; persist();
-      on.hidden = S.cat !== "other"; if (!on.hidden) on.focus();
-      document.getElementById("next").disabled = !canLeaveCat();
+      if (S.cat && S.cat !== el.value) { S.ratings = {sa:{}, int:{}}; S.weights = {}; S.rankDone = false; }
+      S.cat = el.value; persist(); document.getElementById("next").disabled = false;
     }); });
     bindNav();
   }
-  function canLeaveCat(){ return !!S.cat && (S.cat !== "other" || S.otherName.trim().length > 0); }
 
   function renderIntIntro(){
-    var c = cat(), ii = intInfo();
-    var body;
-    if (c.id === "other") {
-      body = '<h2>Is ' + esc(catName()) + ' combined with an existing industry?</h2><p class="muted small">For example, sharing a site, selling a by-product, or using an existing market.</p>' +
-        '<input type="text" id="other-int" maxlength="120" placeholder="Describe the integration" aria-label="Integration with an existing industry">' +
-        '<button class="linkbtn" id="skip-int" type="button">I don’t know an integration; skip this part</button>';
-    } else {
-      body = '<div class="intro"><h2>' + esc(ii.name) + '</h2><p>' + esc(ii.d) + '</p></div>' +
-        '<p class="muted small">Now rate the same nine risks for this integrated version of ' + esc(catName()) + '. Your standalone answer for each risk is shown as a dashed <b>SA</b> marker.</p>';
-    }
-    app.innerHTML = '<div class="card"><span class="tag part">Part 2 · Integrated</span>' + body + '</div>' + nav(true, "Start", c.id !== "other" || S.otherInt.trim().length > 0);
-    if (c.id === "other") {
-      var oi = document.getElementById("other-int"); oi.value = S.otherInt;
-      oi.addEventListener("input", function(){ S.otherInt = oi.value; S.intSkip = false; persist(); document.getElementById("next").disabled = !oi.value.trim(); });
-      document.getElementById("skip-int").addEventListener("click", function(){ S.intSkip = true; S.ratings.int = {}; S.step = "rank"; persist(); render(); });
-    }
-    bindNav(function(){ S.intSkip = false; go(1); });
+    var ii = intInfo();
+    app.innerHTML = '<div class="card"><span class="tag part">Part 2 · Integrated</span>' +
+      '<div class="intro"><h2>' + esc(ii.name) + '</h2><p>' + esc(ii.d) + '</p></div>' +
+      '<div class="kinds">' + (ii.kind || []).map(function(k){ return '<span class="kind">' + esc(k) + '</span>'; }).join("") + '</div>' +
+      '<p class="muted small">Rate the same nine risks for this version. Your part 1 answer shows as a dashed SA box.</p>' +
+      '</div>' + nav(true, "Start");
+    bindNav();
   }
 
   function renderRisk(scn, rid){
-    var r = S.ratings[scn], k = RB[rid], cur = r[rid], ri = RISKS.indexOf(k), sa = S.ratings.sa[rid];
+    var k = RB[rid];
+    if (!k || (scn === "int" && !hasInt()) || !S.ratings[scn]) { S.step = "q1"; render(); return; }
+    var r = S.ratings[scn], cur = r[rid], ri = RISKS.indexOf(k), sa = S.ratings.sa[rid];
     var cells = "";
     for (var L = 5; L >= 1; L--) {
       cells += '<div class="ylab"><span><b>' + L + '</b> ' + LIK[L-1] + '</span></div>';
       for (var I = 1; I <= 5; I++) {
-        var here = cur && cur !== "ns" && cur[0] === L && cur[1] === I;
-        var others = RISKS.filter(function(o){ var v = r[o.id]; return o.id !== rid && v && v !== "ns" && v[0] === L && v[1] === I; });
+        var here = Array.isArray(cur) && cur[0] === L && cur[1] === I;
+        var others = RISKS.filter(function(o){ var v = r[o.id]; return o.id !== rid && Array.isArray(v) && v[0] === L && v[1] === I; });
         var saHere = scn === "int" && Array.isArray(sa) && sa[0] === L && sa[1] === I;
-        cells += '<button type="button" class="cell ' + sev(L, I) + (here ? " picked" : "") + '" data-l="' + L + '" data-i="' + I + '" aria-label="Likelihood ' + L + ' ' + LIK[L-1] + ', impact ' + I + ' ' + IMP[I-1][0] + (saHere ? ', your standalone answer' : '') + '" aria-pressed="' + here + '">' +
+        cells += '<button type="button" class="cell ' + sev(L, I) + (here ? " picked" : "") + '" data-l="' + L + '" data-i="' + I + '" aria-label="Likelihood ' + L + ' ' + LIK[L-1] + ', impact ' + I + ' ' + IMP[I-1][0] + (saHere ? ', your part 1 answer' : '') + '" aria-pressed="' + here + '">' +
           (here ? '<span class="pick">' + rid + '</span>' : '') + (saHere ? '<span class="ghost-chip sa" aria-hidden="true">SA</span>' : '') +
-          others.map(function(o){ return '<span class="ghost-chip" aria-hidden="true">' + o.id + '</span>'; }).join("") + '</button>';
+          others.slice(0, (here || saHere) ? 1 : 2).map(function(o){ return '<span class="ghost-chip" aria-hidden="true">' + o.id + '</span>'; }).join("") +
+          (others.length > ((here || saHere) ? 1 : 2) ? '<span class="ghost-chip more" aria-hidden="true">+' + (others.length - ((here || saHere) ? 1 : 2)) + '</span>' : '') + '</button>';
       }
     }
     cells += '<div></div>' + IMP.map(function(x, i){ return '<div class="xlab"><b>' + (i+1) + '</b><span>' + x[0] + '</span><span>' + x[1] + '</span></div>'; }).join("");
@@ -508,19 +514,21 @@ td.num{text-align:center}
     app.innerHTML =
       '<div class="card">' +
         '<div class="row"><span class="tag part">' + part + '</span><span class="tag">' + (ri + 1) + ' of ' + RISKS.length + '</span></div>' +
-        '<div style="display:grid;gap:4px"><span class="tag">' + esc(k.name) + '</span><h2>' + esc((cat().q && cat().q[k.k]) || k.q) + '</h2><p class="muted small">' + esc(example(scn, k.k)) + ' Tap the square that fits.</p></div>' +
+        '<div class="qblock"><span class="tag">' + esc(k.name) + '</span><h2>' + esc(qText(k)) + '</h2><p class="muted small">' + esc(example(scn, k.k)) + ' Tap the square that fits.</p></div>' +
         '<div><div class="axis">↑ How likely is this during the project’s life?</div><div class="matrix">' + cells + '</div><div class="axis" style="text-align:right">If it happens, how much revenue is lost? →</div></div>' +
         '<div class="row"><div class="dots">' + dots + '</div><button type="button" class="linkbtn" id="ns">' + (cur === "ns" ? "Marked not sure" : "Not sure") + '</button></div>' +
       '</div>' + nav(true, "Next");
     app.querySelectorAll(".cell").forEach(function(c){ c.addEventListener("click", function(){
       var fresh = !r[rid]; r[rid] = [+c.dataset.l, +c.dataset.i]; persist();
-      if (fresh) { renderRisk(scn, rid); setTimeout(function(){ if (S.step === scn + ":" + rid) go(1); }, 220); } else renderRisk(scn, rid);
+      renderRisk(scn, rid);
+      if (fresh) later(function(){ go(1); }, 250);
     }); });
     app.querySelectorAll(".dot").forEach(function(d){ d.addEventListener("click", function(){ S.step = scn + ":" + d.dataset.r; persist(); render(); }); });
     document.getElementById("ns").addEventListener("click", function(){ r[rid] = "ns"; persist(); go(1); });
     bindNav();
   }
 
+  function readSliders(){ app.querySelectorAll('input[type=range][data-w]').forEach(function(el){ S.weights[el.dataset.w] = +el.value; }); }
   function renderRank(){
     var rows = RISKS.map(function(k){
       var v = S.weights[k.id] || 5;
@@ -534,20 +542,18 @@ td.num{text-align:center}
       '<div style="display:grid;gap:4px"><h2>How important is each risk for financing ' + esc(catName()) + '?</h2><p class="muted small">1 = barely matters, 5 = moderately important, 10 = decisive.</p></div>' +
       '<div class="wscale"><span></span><span><span>1</span><span class="mid">5</span><span>10</span></span><span></span><span></span></div>' +
       '<div class="wrows">' + rows + '</div>' +
-      '<div class="row"><span></span><button class="linkbtn" id="wskip" type="button">Skip</button></div>' +
+      '<div class="row"><span></span><button class="linkbtn" id="wskip" type="button">Skip this question</button></div>' +
       '</div>' + nav(true, "Next");
-    app.querySelectorAll('input[type=range]').forEach(function(el){ el.addEventListener("input", function(){
-      document.getElementById("wv-" + el.dataset.w).textContent = el.value;
+    app.querySelectorAll('input[type=range][data-w]').forEach(function(el){ el.addEventListener("input", function(){
+      document.getElementById("wv-" + el.dataset.w).textContent = el.value; S.weights[el.dataset.w] = +el.value; persist();
     }); });
     app.querySelectorAll(".info").forEach(function(b){ b.addEventListener("click", function(){
       var open = b.getAttribute("aria-expanded") === "true";
       app.querySelectorAll(".info").forEach(function(o){ o.setAttribute("aria-expanded", "false"); document.getElementById("d-" + o.dataset.i).hidden = true; });
       if (!open) { b.setAttribute("aria-expanded", "true"); document.getElementById("d-" + b.dataset.i).hidden = false; }
     }); });
-    function save(){ app.querySelectorAll('input[type=range]').forEach(function(el){ S.weights[el.dataset.w] = +el.value; }); }
     document.getElementById("wskip").addEventListener("click", function(){ S.weights = {}; S.rankDone = false; S.step = "review"; persist(); render(); });
-    document.getElementById("back").addEventListener("click", function(){ save(); persist(); });
-    bindNav(function(){ save(); S.rankDone = true; go(1); });
+    bindNav(function(){ readSliders(); S.rankDone = true; go(1); }, function(){ readSliders(); persist(); });
   }
 
   function partList(){
@@ -565,35 +571,43 @@ td.num{text-align:center}
       var scn = b.dataset.redo; S.done = null;
       if (scn === "rank") { S.weights = {}; S.rankDone = false; S.step = "rank"; }
       else { S.ratings[scn] = {}; S.step = scn === "int" ? "int" : "sa:" + RISKS[0].id; }
-      persist(); render(); window.scrollTo(0, 0);
+      persist(); render(); toTop();
     }); });
     var ch = document.getElementById("change"); if (ch) ch.addEventListener("click", function(){ S.done = null; S.step = "q3"; persist(); render(); });
     var so = document.getElementById("startover");
     if (so) so.addEventListener("click", function(){
-      if (so.dataset.arm !== "1") { so.dataset.arm = "1"; so.textContent = "Tap again to clear all"; return; }
-      S = blank(); persist(); render();
+      if (so.dataset.arm !== "1") { so.dataset.arm = "1"; so.textContent = "Tap again to clear all answers"; return; }
+      S = blank(); persist(); render(); toTop();
     });
+    var nx = document.getElementById("nextresp");
+    if (nx) nx.addEventListener("click", function(){ S = blank(); persist(); render(); toTop(); });
   }
 
   function renderReview(){
     app.innerHTML = '<div class="card"><h2>Review</h2>' + partList() +
-      '<div class="row"><button class="linkbtn" id="change" type="button">Change technology</button><button class="linkbtn" id="addc" type="button">' + (S.comment ? "Edit comment" : "Add a comment") + '</button></div>' +
+      (interviewer() ? '<div class="ref"><label for="ref">Respondent reference (optional, e.g. interview code)</label><input type="text" id="ref" maxlength="60" autocomplete="off"></div>' : '') +
+      '<div class="row"><button class="linkbtn" id="change" type="button">Change technology</button><button class="linkbtn" id="addc" type="button">' + (S.comment ? "Edit comment" : "Add a comment") + '</button><button class="linkbtn" id="startover" type="button">Start over</button></div>' +
       '<textarea id="comment" maxlength="2000" aria-label="Comment (optional)"' + (S.comment ? "" : " hidden") + '></textarea>' +
       '</div>' + nav(true, "Submit", !!S.cat);
     var ta = document.getElementById("comment"); ta.value = S.comment || "";
     ta.addEventListener("input", function(){ S.comment = ta.value; persist(); });
     document.getElementById("addc").addEventListener("click", function(){ ta.hidden = false; ta.focus(); });
+    var rf = document.getElementById("ref"); if (rf) { rf.value = S.ref || ""; rf.addEventListener("input", function(){ S.ref = rf.value; persist(); }); }
     bindParts(); bindNav(submit);
   }
 
   function payload(){
-    var c = cat(), ii = hasInt() ? intInfo() : null;
-    return {v:2, submittedAt:new Date().toISOString(), exp:EXP[S.exp], sector:SECTOR[S.sector],
+    var c = cat(), ii = intInfo();
+    var o = {v:2, submittedAt:new Date().toISOString(), exp:EXP[S.exp], sector:SECTOR[S.sector],
       cat:S.cat, catName:catName(), modelStandalone:c.sa || null,
       integration: ii ? {name:ii.name, model:ii.model || null} : null,
       ratings:{sa:Object.assign({}, S.ratings.sa), int: ii ? Object.assign({}, S.ratings.int) : {}},
       weights: S.rankDone ? Object.assign({}, S.weights) : null,
       comment:(S.comment || "").slice(0, 2000)};
+    if (!S.rid) S.rid = "r-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
+    o.rid = S.rid;
+    if (interviewer()) { o.mode = "interview"; o.ref = (S.ref || "").trim().slice(0, 60); }
+    return o;
   }
   function encode(o){ var b = new TextEncoder().encode(JSON.stringify(o)), s = ""; for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]); return "CDRRISK2." + btoa(s); }
   function decode(code){
@@ -602,18 +616,22 @@ td.num{text-align:center}
     var o = JSON.parse(new TextDecoder().decode(b)); if (!o || o.v !== 2 || !o.ratings || !o.ratings.sa) throw new Error("Incomplete answer code.");
     return o;
   }
+  var submitting = false;
   async function submit(){
+    if (submitting) return; submitting = true;
     var n = document.getElementById("next"); n.disabled = true; n.textContent = "Saving…";
-    var data = payload(), saved = false;
+    var data = payload(), saved = false, id = null;
     if (db && uid) {
+      id = isEditor ? (S.docId || ("int-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7))) : uid;
       for (var a = 0; a < 2 && !saved; a++) {
-        try { await db.doc("responses/" + uid).set(Object.assign({source:"page"}, data)); saved = true; }
+        try { await db.doc("responses/" + id).set(Object.assign({source: isEditor ? "interview" : "page"}, data)); saved = true; }
         catch (e) { if (!e || e.code !== "unavailable") break; await new Promise(function(r){ setTimeout(r, 700 + Math.random() * 600); }); }
       }
     }
+    if (saved) S.docId = id;
     var code = encode(data), via = saved ? "page" : null;
     if (!saved && FORM_ACTION && window.fetch) {
-      var tech = data.catName + (data.integration ? " + " + data.integration.name : "");
+      var tech = data.catName + (data.integration ? " + " + data.integration.name : "") + (data.ref ? " [" + data.ref + "]" : "");
       for (var t = 0; t < 2 && !saved; t++) {
         try {
           var body = new URLSearchParams(); body.append(FORM_CODE, code); body.append(FORM_TECH, tech.slice(0, 300));
@@ -623,28 +641,41 @@ td.num{text-align:center}
         } catch (e) { await new Promise(function(r){ setTimeout(r, 800 + Math.random() * 700); }); }
       }
     }
-    S.done = {saved:saved, via:via, code:code}; persist(); render(); window.scrollTo(0, 0);
+    S.done = {saved:saved, via:via, code:code, at:data.submittedAt};
+    submitting = false; persist(); render(); toTop();
   }
 
   function renderDone(){
-    var d = S.done;
-    var tail = '<div class="row"><button class="linkbtn" id="change" type="button">Change technology</button><button class="btn ghost sm" id="startover" type="button">Start over</button></div>';
-    if (d.saved) {
-      app.innerHTML = '<div class="card"><h2>Thank you. Saved.</h2>' +
-        (d.via === "form" ? '<details><summary class="small muted">Backup copy of your answers</summary><p class="small muted" style="margin:6px 0">If you are asked to resend, email this code to <span class="contact">' + esc(CONTACT) + '</span>.</p><textarea class="code-box" id="code" readonly></textarea></details>' : '') +
-        partList() + tail + '</div>';
-      var bk = document.getElementById("code"); if (bk) bk.value = d.code;
+    var d = S.done, html;
+    var asInterviewer = interviewer() || (S.docId && String(S.docId).indexOf("int-") === 0);
+    if (d.saved && asInterviewer) {
+      html = '<div class="card"><h2>Saved.</h2><p class="saved-note">Response ' + esc(S.ref ? '“' + S.ref + '” ' : '') + 'saved at ' + esc(new Date(d.at).toLocaleTimeString()) + '.</p>' +
+        '<button class="btn" id="nextresp" type="button">Start next response</button>' +
+        '<p class="muted small">' + (d.via === "form" ? 'To correct this response, use Redo below and submit again; the corrected copy is sent with the same response ID (' + esc(S.rid) + '), so keep the latest row.' : 'To correct this response before starting the next one, use Redo below. It will be saved over the same record.') + '</p>' +
+        partList() + '</div>';
+    } else if (d.saved) {
+      html = '<div class="card"><h2>Thank you. Your answers are saved.</h2>' +
+        (d.via === "form" ? '<details><summary class="small muted">Backup copy of your answers</summary><p class="small muted" style="margin:6px 0">If you are asked to resend, email this code to <span class="contact">' + esc(CONTACT) + '</span>.</p><textarea class="code-box" id="bk" readonly></textarea></details>' : '') +
+        partList() +
+        '<div class="row"><button class="linkbtn" id="change" type="button">Change technology</button><button class="btn ghost sm" id="startover" type="button">Start over</button></div></div>';
     } else {
-      app.innerHTML = '<div class="card"><h2>One last step: send your answers</h2>' +
+      html = '<div class="card"><h2>One last step: send your answers</h2>' +
         (FORM_PREFILL ? '<p class="small">Open the form and press Submit there. Your answers are already filled in.</p><a class="btn" style="text-align:center;text-decoration:none" href="' + esc(FORM_PREFILL + encodeURIComponent(d.code)) + '" target="_blank" rel="noopener">Open form to submit</a><p class="small muted">If the form does not open, copy the code below and email it to <span class="contact">' + esc(CONTACT) + '</span>.</p>'
                       : '<p class="small">Copy the code below and email it to <span class="contact">' + esc(CONTACT) + '</span>. It contains only your answers.</p>') +
         '<textarea class="code-box" id="code" readonly></textarea>' +
         '<div class="row"><span class="status" id="cs"></span><span style="display:flex;gap:8px">' + (downloads ? '<button class="btn ghost sm" id="sf" type="button">Save file</button>' : '') + '<button class="btn sm" id="copy" type="button">Copy</button></span></div>' +
-        partList() + tail + '</div>';
-      var box = document.getElementById("code"); box.value = d.code;
+        partList() +
+        '<div class="row"><button class="linkbtn" id="change" type="button">Change technology</button><button class="btn ghost sm" id="startover" type="button">Start over</button></div></div>';
+    }
+    app.innerHTML = html;
+    var bk = document.getElementById("bk"); if (bk) bk.value = d.code;
+    var box = document.getElementById("code");
+    if (box) {
+      box.value = d.code;
       document.getElementById("copy").addEventListener("click", function(){
         var s = document.getElementById("cs");
-        navigator.clipboard.writeText(d.code).then(function(){ s.textContent = "Copied"; }, function(){ box.focus(); box.select(); s.textContent = "Selected; press Ctrl+C or ⌘C."; });
+        try { navigator.clipboard.writeText(d.code).then(function(){ s.textContent = "Copied"; }, function(){ box.focus(); box.select(); s.textContent = "Selected; press Ctrl+C or ⌘C."; }); }
+        catch (e) { box.focus(); box.select(); s.textContent = "Selected; press Ctrl+C or ⌘C."; }
       });
       var sf = document.getElementById("sf");
       if (sf) sf.addEventListener("click", function(){ var s = document.getElementById("cs"); downloads.save({filename:"cdr-risk-answers.txt", data:d.code}).then(function(){ s.textContent = "Saved"; }, function(e){ s.textContent = e && e.code === "declined" ? "" : "Not available here; use Copy."; }); });
@@ -653,91 +684,123 @@ td.num{text-align:center}
   }
 
   function go(dir){
-    var st = steps(), i = st.indexOf(S.step), j = Math.max(0, Math.min(st.length - 1, i + dir));
+    var st = steps(), i = st.indexOf(S.step);
+    if (i < 0) { S.step = "q1"; persist(); render(); return; }
     if (dir > 0) {
       if (S.step === "q1" && S.exp == null) return;
       if (S.step === "q2" && S.sector == null) return;
-      if (S.step === "q3" && !canLeaveCat()) return;
-      if (S.step === "int" && S.cat === "other" && !S.otherInt.trim()) return;
+      if (S.step === "q3" && !S.cat) return;
       if (S.step === "review") return;
     }
+    var j = Math.max(0, Math.min(st.length - 1, i + dir));
+    if (st[j] === S.step) return;
     S.step = st[j]; persist(); render();
   }
 
-  // swipe and arrow keys
+  // Swipe and arrow keys press the visible Back / Next buttons, so they follow exactly the same rules.
+  function press(id){ var b = document.getElementById(id); if (b && !b.disabled) b.click(); }
   var sx = null, sy = null;
-  app.addEventListener("touchstart", function(e){ var p = e.changedTouches[0]; sx = p.clientX; sy = p.clientY; }, {passive:true});
+  app.addEventListener("touchstart", function(e){
+    if (e.target.closest && e.target.closest('input, textarea')) { sx = null; return; }
+    var p = e.changedTouches[0]; sx = p.clientX; sy = p.clientY;
+  }, {passive:true});
   app.addEventListener("touchend", function(e){
     if (sx == null || S.done) return; var p = e.changedTouches[0], dx = p.clientX - sx, dy = p.clientY - sy; sx = null;
-    if (Math.abs(dx) > 70 && Math.abs(dx) > 2 * Math.abs(dy)) go(dx < 0 ? 1 : -1);
+    if (Math.abs(dx) > 70 && Math.abs(dx) > 2 * Math.abs(dy)) press(dx < 0 ? "next" : "back");
   }, {passive:true});
   document.addEventListener("keydown", function(e){
-    if (S.done || e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") return;
-    if (e.key === "ArrowRight") go(1); else if (e.key === "ArrowLeft") go(-1);
+    if (S.done || e.altKey || e.ctrlKey || e.metaKey) return;
+    var t = e.target; if (t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT" || t.tagName === "SELECT")) return;
+    if (!app.contains(t) && !foot.contains(t) && t !== document.body) return;
+    if (e.key === "ArrowRight") { if (S.step !== "review") press("next"); }
+    else if (e.key === "ArrowLeft") press("back");
   });
 
-  // ---------------- owner results
+  // ---------------- editor view of responses
   var resEl = document.getElementById("results"), RESP = [], OLD = 0, unsub = null;
   function median(a){ if (!a.length) return null; var s = a.slice().sort(function(x, y){ return x - y; }), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m-1] + s[m]) / 2; }
   function f1(x){ return x == null ? "–" : String(Math.round(x * 10) / 10); }
   function cellFor(list, scn, rid){
     var Ls = [], Is = [], ns = 0;
-    list.forEach(function(x){ var v = x.ratings[scn] && x.ratings[scn][rid]; if (Array.isArray(v)) { Ls.push(v[0]); Is.push(v[1]); } else if (v === "ns") ns++; });
+    list.forEach(function(x){ var v = x.ratings && x.ratings[scn] && x.ratings[scn][rid]; if (Array.isArray(v)) { Ls.push(v[0]); Is.push(v[1]); } else if (v === "ns") ns++; });
     return Ls.length ? f1(median(Ls)) + '/' + f1(median(Is)) + ' <span class="muted">(' + Ls.length + (ns ? '+' + ns + '?' : '') + ')</span>' : (ns ? '<span class="muted">' + ns + '?</span>' : '–');
   }
-  function renderResults(){
-    var head = '<tr><th>Technology</th><th>Part</th><th>n</th>' + RISKS.map(function(k){ return '<th title="' + esc(k.name) + '">' + k.id + '</th>'; }).join("") + '</tr>';
-    var body = "";
-    CATS.forEach(function(c){
-      var list = RESP.filter(function(x){ return x.cat === c.id; }); if (!list.length) return;
-      var label = c.id === "other" ? "Other: " + list.map(function(x){ return x.catName; }).join(", ") : c.name;
-      body += '<tr><td>' + esc(label) + '</td><td>Standalone</td><td class="num">' + list.length + '</td>' + RISKS.map(function(k){ return '<td class="num">' + cellFor(list, "sa", k.id) + '</td>'; }).join("") + '</tr>';
-      var li = list.filter(function(x){ return x.integration; });
-      var lw = list.filter(function(x){ return x.weights; });
-      if (lw.length) body += '<tr><td class="muted">Importance (median, 1–10)</td><td>Importance</td><td class="num">' + lw.length + '</td>' + RISKS.map(function(k){ return '<td class="num">' + f1(median(lw.map(function(x){ return +x.weights[k.id]; }).filter(function(v){ return v > 0; }))) + '</td>'; }).join("") + '</tr>';
-      if (li.length) body += '<tr><td class="muted">' + esc(c.int ? c.int.name : "Own integrations") + '</td><td>Integrated</td><td class="num">' + li.length + '</td>' + RISKS.map(function(k){ return '<td class="num">' + cellFor(li, "int", k.id) + '</td>'; }).join("") + '</tr>';
-    });
-    if (!body) body = '<tr><td colspan="' + (RISKS.length + 3) + '" class="muted">No responses yet.</td></tr>';
-    resEl.innerHTML = '<div class="card"><div class="row"><h2>' + RESP.length + ' responses</h2>' + (downloads ? '<button class="btn ghost sm" id="csv" type="button">CSV</button>' : '') + '</div>' +
-      '<p class="small muted">Median likelihood/impact; (n ratings + not sure). Only editors of this page can see this.' + (OLD ? ' ' + OLD + ' response(s) from an earlier survey version are not shown.' : '') + '</p>' +
-      '<div class="tbl-wrap"><table><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>' +
-      '<textarea id="imp" class="code-box" placeholder="Paste one or more answer codes (CDRRISK2…), one per line" aria-label="Answer codes received by email or form"></textarea>' +
-      '<div class="row"><span class="status" id="rs"></span><button class="btn sm" id="imp-btn" type="button">Add responses</button></div></div>';
-    var c = document.getElementById("csv");
-    if (c) c.addEventListener("click", function(){
-      var q = function(s){ s = s == null ? "" : String(s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
-      var lines = ["response_id,source,submitted_at,experience,sector,category,technology_name,part,integration,model_case,risk,likelihood,impact,not_sure,importance_1_10,comment"];
-      RESP.forEach(function(x){ ["sa","int"].forEach(function(scn){
-        var rr = x.ratings[scn] || {}; RISKS.forEach(function(k){ var v = rr[k.id]; if (!v) return;
-          lines.push([x._id, x.source, x.submittedAt, x.exp, x.sector, x.cat, x.catName, scn === "sa" ? "standalone" : "integrated",
+  function csvText(){
+    var q = function(s){ s = s == null ? "" : String(s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+    var lines = ["response_id,source,respondent_ref,submitted_at,experience,sector,category,technology_name,part,integration,model_case,risk,likelihood,impact,not_sure,importance_1_10,comment"];
+    RESP.forEach(function(x){
+      ["sa","int"].forEach(function(scn){
+        var rr = (x.ratings && x.ratings[scn]) || {};
+        RISKS.forEach(function(k){ var v = rr[k.id]; if (!v) return;
+          lines.push([x._id, x.source, x.ref, x.submittedAt, x.exp, x.sector, x.cat, x.catName, scn === "sa" ? "standalone" : "integrated",
             scn === "int" && x.integration ? x.integration.name : "", scn === "sa" ? x.modelStandalone : (x.integration && x.integration.model),
             k.id, Array.isArray(v) ? v[0] : "", Array.isArray(v) ? v[1] : "", v === "ns" ? 1 : 0, "", x.comment].map(q).join(","));
         });
       });
       if (x.weights) RISKS.forEach(function(k){
-        lines.push([x._id, x.source, x.submittedAt, x.exp, x.sector, x.cat, x.catName, "importance", "", "", k.id, "", "", "", +x.weights[k.id] || "", x.comment].map(q).join(","));
+        lines.push([x._id, x.source, x.ref, x.submittedAt, x.exp, x.sector, x.cat, x.catName, "importance", "", "", k.id, "", "", "", +x.weights[k.id] || "", x.comment].map(q).join(","));
       });
-      });
-      var s = document.getElementById("rs");
-      downloads.save({filename:"cdr-risk-survey-responses.csv", data:lines.join("\n")}).then(function(){ s.textContent = "Saved"; }, function(e){ s.textContent = e && e.code === "declined" ? "" : "Download not available here."; });
     });
+    return lines.join("\n");
+  }
+  function renderResults(){
+    var keep = document.getElementById("imp") ? document.getElementById("imp").value : "";
+    var keepMsg = document.getElementById("rs") ? document.getElementById("rs").textContent : "";
+    var head = '<tr><th>Technology</th><th>Part</th><th>n</th>' + RISKS.map(function(k){ return '<th title="' + esc(k.name) + '">' + k.id + '</th>'; }).join("") + '</tr>';
+    var body = "";
+    CATS.forEach(function(c){
+      var list = RESP.filter(function(x){ return x.cat === c.id; }); if (!list.length) return;
+      body += '<tr><td>' + esc(c.name) + '</td><td>Standalone</td><td class="num">' + list.length + '</td>' + RISKS.map(function(k){ return '<td class="num">' + cellFor(list, "sa", k.id) + '</td>'; }).join("") + '</tr>';
+      var li = list.filter(function(x){ return x.integration; });
+      if (li.length) body += '<tr><td class="muted">' + esc(c.int ? c.int.name : "Integrated") + '</td><td>Integrated</td><td class="num">' + li.length + '</td>' + RISKS.map(function(k){ return '<td class="num">' + cellFor(li, "int", k.id) + '</td>'; }).join("") + '</tr>';
+      var lw = list.filter(function(x){ return x.weights; });
+      if (lw.length) body += '<tr><td class="muted">Importance (median, 1–10)</td><td>Importance</td><td class="num">' + lw.length + '</td>' + RISKS.map(function(k){ return '<td class="num">' + f1(median(lw.map(function(x){ return +x.weights[k.id]; }).filter(function(v){ return v > 0; }))) + '</td>'; }).join("") + '</tr>';
+    });
+    var other = RESP.filter(function(x){ return !CB[x.cat]; }).length;
+    if (!body) body = '<tr><td colspan="' + (RISKS.length + 3) + '" class="muted">No responses yet.</td></tr>';
+    var items = RESP.slice().sort(function(a, b){ return String(b.submittedAt).localeCompare(String(a.submittedAt)); }).map(function(x){
+      var when = x.submittedAt ? new Date(x.submittedAt).toLocaleString() : "";
+      return '<div class="ritem"><div class="t"><b>' + esc(x.ref || (x.source === "interview" ? "Interview" : x.source === "code" ? "From code" : "Online")) + '</b> · ' + esc(x.catName || x.cat) + ' · <span class="muted">' + esc(when) + '</span></div>' +
+        '<button class="btn ghost sm" type="button" data-del="' + esc(x._id) + '">Delete</button></div>';
+    }).join("");
+    resEl.innerHTML = '<div class="card"><div class="row"><h2>' + RESP.length + ' response' + (RESP.length === 1 ? '' : 's') + '</h2>' + (downloads ? '<button class="btn ghost sm" id="csv" type="button">Download CSV</button>' : '') + '</div>' +
+      '<p class="small muted">Median likelihood/impact; (n ratings + not sure). Only editors of this page can see this.' + (OLD ? ' ' + OLD + ' response(s) from an earlier survey version are not shown.' : '') + (other ? ' ' + other + ' response(s) for options no longer offered are listed below but not in the table.' : '') + '</p>' +
+      '<div class="tbl-wrap"><table><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>' +
+      (items ? '<div class="rlist">' + items + '</div>' : '') +
+      '<textarea id="imp" class="code-box" placeholder="Paste one or more answer codes (CDRRISK2…), one per line" aria-label="Answer codes received by email or form"></textarea>' +
+      '<div class="row"><span class="status" id="rs"></span><button class="btn sm" id="imp-btn" type="button">Add responses</button></div></div>';
+    document.getElementById("imp").value = keep;
+    document.getElementById("rs").textContent = keepMsg;
+    var c = document.getElementById("csv");
+    if (c) c.addEventListener("click", function(){
+      var s = document.getElementById("rs");
+      downloads.save({filename:"cdr-risk-survey-responses.csv", data:csvText()}).then(function(){ s.textContent = "Saved"; }, function(e){ s.textContent = e && e.code === "declined" ? "" : "Download not available here."; });
+    });
+    resEl.querySelectorAll("[data-del]").forEach(function(b){ b.addEventListener("click", async function(){
+      if (b.dataset.arm !== "1") { b.dataset.arm = "1"; b.textContent = "Tap again to delete"; return; }
+      b.disabled = true;
+      try { await db.doc("responses/" + b.dataset.del).delete(); }
+      catch (e) { b.disabled = false; b.textContent = "Delete failed"; }
+    }); });
     document.getElementById("imp-btn").addEventListener("click", async function(){
-      var s = document.getElementById("rs"), ta = document.getElementById("imp");
+      var s = document.getElementById("rs"), ta = document.getElementById("imp"), b = document.getElementById("imp-btn");
       var codes = (ta.value.match(/CDRRISK2\.[A-Za-z0-9+\/=]+/g) || []);
       if (!codes.length) { s.textContent = "No answer codes found."; return; }
-      var added = 0, bad = 0, failed = 0, b = this; b.disabled = true;
+      var added = 0, bad = 0, failed = 0; b.disabled = true;
       for (var i = 0; i < codes.length; i++) {
         var o; try { o = decode(codes[i]); } catch (e) { bad++; continue; }
         var h = 2166136261; for (var j = 0; j < codes[i].length; j++) { h ^= codes[i].charCodeAt(j); h = Math.imul(h, 16777619) >>> 0; }
-        try { await db.collection("responses").doc("code-" + h.toString(36)).set(Object.assign({}, o, {source:"code"})); added++; s.textContent = "Adding\u2026 " + added + " of " + codes.length; }
+        try { await db.collection("responses").doc("code-" + h.toString(36)).set(Object.assign({}, o, {source:"code"})); added++; s.textContent = "Adding… " + added + " of " + codes.length; }
         catch (e) { failed++; if (e && e.code === "quota_exceeded") break; }
       }
-      b.disabled = false; ta.value = failed ? ta.value : "";
-      s.textContent = added + " added" + (bad ? ", " + bad + " unreadable" : "") + (failed ? ", " + failed + " not saved" : "") + ". Pasting the same code twice does not create a duplicate.";
+      var ta2 = document.getElementById("imp"), s2 = document.getElementById("rs"), b2 = document.getElementById("imp-btn");
+      if (b2) b2.disabled = false; if (ta2 && !failed) ta2.value = "";
+      if (s2) s2.textContent = added + " added" + (bad ? ", " + bad + " unreadable" : "") + (failed ? ", " + failed + " not saved" : "") + ". The same code pasted twice is stored once.";
     });
   }
   document.getElementById("toggle-results").addEventListener("click", function(){
     resEl.hidden = !resEl.hidden;
+    this.textContent = resEl.hidden ? "Responses" : "Hide responses";
     if (!resEl.hidden && !unsub && db) {
       resEl.innerHTML = '<p class="muted">Loading…</p>';
       unsub = db.collection("responses").onSnapshot(function(snap){
@@ -754,18 +817,19 @@ td.num{text-align:center}
       if (!window.claude || !window.claude.use) return;
       var res = await Promise.all([claude.use("db"), claude.use("user"), claude.use("downloads")]);
       db = res[0]; var user = res[1]; downloads = res[2];
-      if (user) { uid = await user.id(); if (db && await user.canEdit()) document.getElementById("toggle-results").hidden = false; }
-      if (db && uid) {
+      if (user) { uid = await user.id(); isEditor = !!(db && await user.canEdit()); }
+      if (isEditor) document.getElementById("toggle-results").hidden = false;
+      if (db && uid && !isEditor) {
         var had = false; try { had = !!localStorage.getItem(KEY); } catch(e) {}
         var snap = await db.doc("responses/" + uid).get();
         if (snap.exists && !had) {
           var o = snap.data();
-          if (o.v === 2 && o.ratings && o.ratings.sa && CB[o.cat]) {
+          if (o && o.v === 2 && o.ratings && o.ratings.sa && CB[o.cat]) {
             S.exp = EXP.indexOf(o.exp); if (S.exp < 0) S.exp = null;
             S.sector = SECTOR.indexOf(o.sector); if (S.sector < 0) S.sector = null;
-            S.cat = o.cat; if (o.cat === "other") { S.otherName = o.catName || ""; S.otherInt = o.integration ? o.integration.name : ""; S.intSkip = !o.integration; }
+            S.cat = o.cat; S.docId = uid;
             S.ratings = JSON.parse(JSON.stringify({sa:o.ratings.sa || {}, int:o.ratings.int || {}})); S.weights = o.weights ? Object.assign({}, o.weights) : {}; S.rankDone = !!o.weights; S.comment = o.comment || "";
-            S.done = {saved:true, code:encode(o)}; S.step = "review"; persist();
+            S.done = {saved:true, code:encode(o), at:o.submittedAt}; S.step = "review"; persist();
           }
         }
       }
