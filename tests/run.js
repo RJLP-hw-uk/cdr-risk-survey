@@ -177,12 +177,12 @@ async function baselineChecks(p, label){
   check(socEx.includes('Class VI') && socEx.includes(', or residents or landowners oppose'), 'merged category shows the permit and the acceptance example (' + socEx.slice(0, 60) + '…)');
   check(!/certifier deducts/.test(await appText(p)), 'certification example not shown');
   await clickNext(p);
-  check(await step(p) === 'sa:rate' && (await p.$eval('#berr', e => e.textContent)).startsWith('7 not set') && (await p.$eval('#berr', e => e.textContent)).includes('Not sure'), 'first Next with unset sliders warns and stays');
+  check(await step(p) === 'sa:rate' && (await p.$eval('#berr', e => e.textContent)).startsWith('7 not set (marked above)') && (await p.$eval('#berr', e => e.textContent)).includes('Not sure') && await p.$$eval('.srow.need', e => e.length) === 7, 'first Next with unset sliders warns, marks the rows and stays');
   await p.fill('#b-TEC', '7'); await p.fill('#b-PRI', '2'); await p.fill('#b-POL', '5');
   check((await state(p)).ratings.sa.TEC === 7 && (await p.$eval('#bv-TEC', e => e.textContent)) === '7 / 10', 'moving a slider records 0–10 and shows the value');
   check(await p.$eval('#bv-TEC', e => e.classList.contains('hi')) && await p.$eval('#bv-PRI', e => e.classList.contains('lo')) && await p.$eval('#bv-POL', e => e.classList.contains('mid')), 'value label coloured low / middle / high');
   check(await p.$eval('#b-TEC', e => !e.classList.contains('unset') && getComputedStyle(e).filter === 'none'), 'set slider shows full colour');
-  check(await p.$eval('#berr', e => e.textContent) === '', 'warning clears once a slider is set');
+  check(await p.$eval('#berr', e => e.textContent) === '' && await p.$$eval('.srow.need', e => e.length) === 4, 'warning clears once a slider is set; answered rows lose their mark');
   await p.click('#b-CON'); await sleep(30);
   check((await state(p)).ratings.sa.CON === 5 && (await p.$eval('#bv-CON', e => e.textContent)) === '5 / 10', 'tapping a slider at the middle records 5');
   await p.click('.nsb[data-n="CUR"]'); await sleep(30);
@@ -584,7 +584,7 @@ async function baselineChecks(p, label){
   console.log('S8 phone touch');
   ctx = await browser.newContext({...devices['Pixel 7']});
   await ctx.addInitScript(k => { if (sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded', '1');
-    localStorage.setItem(k, JSON.stringify({step:'ch:cmp', consent:true, exp:1, sector:[1], cat:'cew', ratings:{sa:{TEC:[3,3],PRI:[3,3],POL:[3,3],CUR:[3,3],CON:[3,3],CPT:[3,3],SOC:[3,3]},cp:{},ch:{}},
+    localStorage.setItem(k, JSON.stringify({step:'ch:cmp', consent:true, exp:1, sector:[1], cat:'cew', ratings:{sa:{TEC:5,PRI:5,POL:5,CUR:5,CON:5,CPT:5,SOC:5},cp:{},ch:{}},
       weights:{sa:{},cp:{},ch:{}}, rankDone:{sa:true,cp:false,ch:false}, skip:{cp:false,ch:false}, variant:null, techRank:[]})); }, KEY);
   p = await ctx.newPage(); p.errors = []; p.on('pageerror', e => p.errors.push(e.message));
   await p.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
@@ -601,6 +601,31 @@ async function baselineChecks(p, label){
   await p.tap('#next'); await sleep(200);
   check(await step(p) === 'wch', 'one tap on Next moves on once every slider is answered');
   check(p.errors.length === 0, 'no page errors with touch: ' + p.errors.join(' | '));
+  await ctx.close();
+
+  // ---------- S8b: phone touch on the baseline page (a tap at 5 leaves the value unchanged and must count)
+  console.log('S8b phone touch, baseline');
+  ctx = await browser.newContext({...devices['Pixel 7']});
+  await ctx.addInitScript(k => { if (sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded', '1');
+    localStorage.setItem(k, JSON.stringify({step:'sa:rate', consent:true, exp:1, sector:[1], cat:'erw', ratings:{sa:{},cp:{},ch:{}},
+      weights:{sa:{},cp:{},ch:{}}, rankDone:{sa:false,cp:false,ch:false}, skip:{cp:false,ch:false}, variant:null, techRank:[]})); }, KEY);
+  p = await ctx.newPage(); p.errors = []; p.on('pageerror', e => p.errors.push(e.message));
+  await p.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+  await p.goto(PAGE); await sleep(250);
+  check(await step(p) === 'sa:rate', 'touch test starts on the baseline page');
+  const tapB = async (id, frac) => { const el = await p.$('#b-' + id); await el.scrollIntoViewIfNeeded(); const bb = await el.boundingBox();
+    await p.touchscreen.tap(bb.x + bb.width * frac, bb.y + bb.height / 2); await sleep(150); return (await state(p)).ratings.sa[id]; };
+  check(await tapB('TEC', 0.5) === 5 && await p.$eval('#bv-TEC', e => e.textContent) === '5 / 10', 'a phone tap on a baseline slider at the middle records 5');
+  check(await tapB('PRI', 0.97) === 10 && await tapB('POL', 0.03) === 0, 'phone taps near the ends record 10 and 0');
+  await p.tap('.nsb[data-n="CUR"]'); await sleep(100);
+  check((await state(p)).ratings.sa.CUR === 'ns', 'a phone tap on Not sure records it');
+  await p.tap('#next'); await sleep(150);
+  check(await step(p) === 'sa:rate' && await p.$$eval('.srow.need', e => e.length) === 3 && (await p.$eval('#berr', e => e.textContent)).startsWith('3 not set (marked above)'), 'Next with unset sliders marks the 3 unset rows');
+  await tapB('CON', 0.5); await p.tap('.nsb[data-n="CPT"]'); await sleep(100); await tapB('SOC', 0.5);
+  check(await p.$$eval('.srow.need', e => e.length) === 0 && await p.$eval('#berr', e => e.textContent) === '', 'answering or Not sure clears the marks and the warning');
+  await p.tap('#next'); await sleep(200);
+  check(await step(p) === 'wsa', 'one tap on Next moves on once every risk is answered');
+  check(p.errors.length === 0, 'no page errors with touch on the baseline: ' + p.errors.join(' | '));
   await ctx.close();
 
   await browser.close(); server.close();
