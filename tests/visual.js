@@ -19,31 +19,32 @@ let fails=0; const check=(c,m)=>{ if(!c){fails++; console.log('  FAIL: '+m);} };
    const ctx=await b.newContext({viewport:{width:w,height:h}}); const p=await ctx.newPage();
    await p.route(/fonts\./,r=>r.abort()); await p.route(/docs\.google\.com/,r=>r.fulfill({status:200,body:'ok'}));
    await p.goto(PAGE); await sleep(150);
-   const navY=new Set(), nextX=new Set(), cells=new Set(), mat=new Set(); let docScroll=0, innerScroll=[];
+   const navY=new Set(), nextX=new Set(), sliders=new Set(); let docScroll=0, innerScroll=[];
    const snap=async(label)=>{
-     const r=await p.evaluate(()=>{ const n=document.getElementById('next'); const c=document.querySelector('.cell'); const m=document.querySelector('.matrix'); const sc=document.getElementById('scroll');
-       return {next:n?n.getBoundingClientRect().toJSON():null, cell:c?[c.getBoundingClientRect().width,c.getBoundingClientRect().height]:null, mat:m?[Math.round(m.getBoundingClientRect().width),Math.round(m.getBoundingClientRect().left)]:null,
+     const r=await p.evaluate(()=>{ const n=document.getElementById('next'); const b=document.querySelector('input.bsl'); const sc=document.getElementById('scroll');
+       return {next:n?n.getBoundingClientRect().toJSON():null, bsl:b?[Math.round(b.getBoundingClientRect().width),Math.round(b.getBoundingClientRect().left)]:null,
          doc:[document.documentElement.scrollHeight, innerHeight, document.documentElement.scrollWidth, innerWidth], inner:sc.scrollHeight>sc.clientHeight+1}; });
      if (r.next){ navY.add(Math.round(r.next.top)); nextX.add(Math.round(r.next.left)); }
-     if (r.cell){ cells.add(r.cell.map(Math.round).join('x')); mat.add(r.mat.join('@')); }
+     if (r.bsl) sliders.add(r.bsl.join('@'));
      if (r.doc[0]>r.doc[1] || r.doc[2]>r.doc[3]) docScroll++;
      if (r.inner) innerScroll.push(label);
    };
    await snap('intro'); await p.check('#consent'); await p.click('#next'); await sleep(60); await snap('q1'); await p.click('#exp1'); await sleep(260); await snap('q2'); await p.click('#sector1'); await sleep(60); await p.click('#next'); await sleep(60); await snap('rank'); await p.click('.trk[data-t="beccs"]'); await p.click('#next'); await sleep(60); await snap('q3');
    await p.click('#c-'+catId); await p.click('#next'); await sleep(60); await snap('plan'); await p.click('#next'); await sleep(60);
-   for (let k=0;k<50;k++){ const st=await p.evaluate(()=>JSON.parse(localStorage.getItem('cdr-risk-survey-v9')).step); if(st==='wsa'||st==='wch'){await snap(st);} if(st==='review'||(st==='wsa'&&catId==='erw')||st==='wch'){ break; }
-     await snap(st); if (await p.$('.cell')) { await p.click('.cell[data-l="'+(1+k%5)+'"][data-i="'+(1+(k*2)%5)+'"]'); await sleep(300); } else { await p.click('#next'); await sleep(60); } }
+   for (let k=0;k<50;k++){ const st=await p.evaluate(()=>JSON.parse(localStorage.getItem('cdr-risk-survey-v10')).step); if(st==='wsa'||st==='wch'){await snap(st);} if(st==='review'||(st==='wsa'&&catId==='erw')||st==='wch'){ break; }
+     await snap(st);
+     if (st==='sa:rate') { for (const [i,id] of ['TEC','PRI','POL','CUR','CON','CPT','SOC'].entries()) { await p.fill('#b-'+id, String((i*3)%11)); await snap(st+':'+id); } await p.click('.nsb[data-n="CPT"]'); await p.click('.info[data-i="SOC"]'); await sleep(30); await snap(st+':info'); }
+     await p.click('#next'); await sleep(60); }
    if (w===1366 && catId==='cew') { await p.screenshot({path:path.join(__dirname,'v-rank.png')}); }
    await p.click('.info[data-i="CUR"]'); await sleep(30); await snap('rank-info');
    await p.click('#next'); await sleep(60); await snap('review');
    const tag=w+'x'+h+' '+catId;
    check(navY.size===1, tag+': Next button moves vertically '+[...navY]);
    check(nextX.size===1, tag+': Next button moves horizontally '+[...nextX]);
-   check(cells.size===1, tag+': grid square size changes '+[...cells]);
-   check(mat.size===1, tag+': grid width/position changes '+[...mat]);
+   check(sliders.size===1, tag+': baseline slider width/position changes '+[...sliders]);
    check(docScroll===0, tag+': page itself scrolls on '+docScroll+' screens');
-   console.log(tag.padEnd(18),'square',[...cells].join(),'next y',[...navY].join(),'inner scroll on:',innerScroll.join(',')||'none');
-   if (catId==='cew') { await p.evaluate(()=>{ const s=JSON.parse(localStorage.getItem('cdr-risk-survey-v9')); s.step='ch:cmp'; s.done=null; localStorage.setItem('cdr-risk-survey-v9',JSON.stringify(s)); }); await p.reload(); await sleep(150); await p.screenshot({path:path.join(__dirname,'v-'+w+'x'+h+'.png')}); }
+   console.log(tag.padEnd(18),'slider',[...sliders].join(),'next y',[...navY].join(),'inner scroll on:',[...new Set(innerScroll.map(x=>x.split(':').slice(0,2).join(':')))].join(',')||'none');
+   if (catId==='cew') { await p.evaluate(()=>{ const s=JSON.parse(localStorage.getItem('cdr-risk-survey-v10')); s.step='ch:cmp'; s.done=null; localStorage.setItem('cdr-risk-survey-v9',JSON.stringify(s)); }); await p.reload(); await sleep(150); await p.screenshot({path:path.join(__dirname,'v-'+w+'x'+h+'.png')}); }
    await ctx.close();
   } }
  console.log(fails?fails+' visual checks failed':'all visual checks passed'); await b.close(); server.close(); })();

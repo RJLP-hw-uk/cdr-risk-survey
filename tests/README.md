@@ -4,8 +4,8 @@ Browser tests for `index.html` (Playwright, Chromium). Both scripts serve the pa
 
 ```bash
 npm i -D playwright && npx playwright install chromium
-node tests/run.js      # click-through: consent page and privacy notice, technology list, 7 risk categories, baseline grids plus one variant (co-product or co-host; random assignment when a technology has both, incl. skipping the variant) rated on one comparison page of 7 sliders (much lower … much higher than the baseline, Not set until touched; phone taps checked under Pixel 7 touch emulation), importance per part, thank-you screen with interview offer, interview mode (#interview), Google Form payload, timing and contact row, email fallback, claude.ai editor/respondent storage (mocked)
-node tests/visual.js   # fixed layout: Back/Next never move, grid squares stay one size per window, the page itself never scrolls (6 window sizes)
+node tests/run.js      # click-through: consent page and privacy notice, technology list, 7 risk categories, baseline on one page of 7 coloured 0–10 sliders (Not set until touched, Not sure per risk, soft warning for unset sliders) plus one variant (co-product or co-host; random assignment when a technology has both, incl. skipping the variant) rated on one comparison page of 7 sliders (much lower … much higher than the baseline, Not set until touched); phone taps on both slider pages checked under Pixel 7 touch emulation; importance per part, thank-you screen with interview offer, interview mode (#interview), Google Form payload, timing and contact row, email fallback, claude.ai editor/respondent storage (mocked)
+node tests/visual.js   # fixed layout: Back/Next never move, baseline sliders keep one width per window, the page itself never scrolls (6 window sizes)
 ```
 
 `mock.js` stands in for the claude.ai runtime (database, user, downloads) so the same page can be tested as a claude.ai artifact.
