@@ -172,7 +172,7 @@ async function riskScreenChecks(p, label){
   ids = Object.keys(st).filter(k => k.startsWith('responses/int-'));
   check(ids.length === 1, 'double-click on Submit stores exactly one record (got ' + ids.length + ')');
   const d1 = st[ids[0]];
-  check(d1 && d1.v === 3 && d1.consent && d1.consent.given === true && d1.consent.at, 'record carries consent');
+  check(d1 && d1.v === 4 && d1.consent && d1.consent.given === true && d1.consent.at, 'record carries consent');
   check(d1 && d1.ref === 'R1' && d1.mode === 'interview' && d1.source === 'interview', 'record carries reference and interview mode');
   check(d1 && Object.keys(d1.ratings.sa).length === 9 && d1.ratings.sa.POL === 'ns' && Object.keys(d1.ratings.int).length === 9 && d1.ratings.sa.CER, 'record has 9 + 9 ratings with not-sure');
   check(d1 && !('RES' in d1.ratings.sa), 'removal estimate no longer asked');
@@ -290,6 +290,7 @@ async function riskScreenChecks(p, label){
   await p.click('#another'); await sleep(60);
   s = await state(p);
   check(s.step === 'q3' && s.exp === 2 && s.sector === 1 && s.consent && s.cat === null && !s.done && !s.rid, 'Evaluate another technology keeps background and consent, clears the rest');
+  check(s.activeMs < 1500 && Object.keys(s.stepMs || {}).length <= 1 && Date.now() - Date.parse(s.startedAt) < 3000, 'Evaluate another technology restarts the timer');
   check(p.errors.length === 0, 'no page errors in respondent run: ' + p.errors.join(' | '));
   await ctx.close();
 
@@ -304,12 +305,17 @@ async function riskScreenChecks(p, label){
   const code = form.get('entry.269220021') || '';
   check(code.startsWith('CDRRISK2.'), 'form POST carries the answer code');
   const cols = (form.get('entry.530102048') || '').split('|'); const hdr = await p.evaluate(() => window.__tableHeader);
-  check(cols.length === hdr.length && hdr.length === 65, 'table record has one value per header column (' + cols.length + '/' + hdr.length + ')');
-  check(cols[0] === 'R2' && cols[7] === 'Enhanced rock weathering' && cols[8] === 'Rock weathering sold to farmers', 'table record names technology and integration');
+  check(cols.length === hdr.length && hdr.length === 69, 'table record has one value per header column (' + cols.length + '/' + hdr.length + ')');
+  check(cols[0] === 'R3' && cols[7] === 'Enhanced rock weathering' && cols[8] === 'Rock weathering sold to farmers', 'table record names technology and integration');
   check(cols[hdr.indexOf('P1 Technology risk likelihood')] === '2' && cols[hdr.indexOf('P2 Acceptance risk impact')] === '2' && cols[hdr.indexOf('P1 importance Policy risk')] === '5' && cols[hdr.indexOf('P2 importance Certification risk')] === '5', 'table record values in the right columns');
   check(!!cols[hdr.indexOf('consent_at')], 'table record carries consent time');
+  check(hdr.indexOf('comment') === 64 && hdr.slice(65).join() === 'started_at,total_seconds,active_seconds,seconds_per_screen', 'timing columns appended after the R2 columns');
+  const tStart = cols[hdr.indexOf('started_at')], tTot = +cols[hdr.indexOf('total_seconds')], tAct = +cols[hdr.indexOf('active_seconds')], tScr = cols[hdr.indexOf('seconds_per_screen')];
+  check(!isNaN(Date.parse(tStart)) && Date.parse(tStart) <= Date.parse(cols[1]), 'started_at is a time before submission (' + tStart + ')');
+  check(tTot >= 1 && tAct >= 1 && tAct <= tTot + 1, 'total and active seconds recorded (' + tTot + ' / ' + tAct + ')');
+  check(/^intro=\d+;q1=\d+;/.test(tScr) && tScr.includes('sa:TEC=') && tScr.includes('int:CER=') && tScr.includes('review='), 'seconds per screen recorded in survey order (' + tScr.slice(0, 60) + '…)');
   const sent = JSON.parse(Buffer.from(code.slice(9), 'base64').toString('utf8'));
-  check(sent.v === 3 && sent.cat === 'erw' && Object.keys(sent.ratings.sa).length === 9 && Object.keys(sent.ratings.int).length === 9 && sent.rid && sent.consent.given, 'decoded form payload is complete');
+  check(sent.v === 4 && sent.timing && sent.timing.totalS === tTot && sent.timing.steps.intro >= 0 && sent.cat === 'erw' && Object.keys(sent.ratings.sa).length === 9 && Object.keys(sent.ratings.int).length === 9 && sent.rid && sent.consent.given, 'decoded form payload is complete');
   check(await p.$eval('#bk', e => e.value) === code, 'backup code matches what was sent');
   // interview offer
   await p.click('#iv1'); await sleep(40);
