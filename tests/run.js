@@ -17,7 +17,7 @@ const server = http.createServer((req, res) => {
 const listening = new Promise(r => server.listen(0, '127.0.0.1', () => r(server.address().port)));
 let PAGE;
 const MOCK = require('fs').readFileSync(path.join(__dirname, 'mock.js'), 'utf8');
-const KEY = 'cdr-risk-survey-v6';
+const KEY = 'cdr-risk-survey-v7';
 const ORDER = ['TEC','PRI','POL','CUR','CON','CPT','PER','SOC','CER'];
 const TITLES = ['Technology risk','Price risk','Policy risk','Transport and storage risk','Cost risk','Counterparty risk','Regulatory risk','Acceptance risk','Certification risk'];
 let fails = 0, passes = 0;
@@ -71,7 +71,9 @@ async function about(p, exp, sector, cat, rank){
   if (await step(p) === 'q1') {
     await p.click('#exp' + exp); await sleep(300);
     check(await step(p) === 'q2', 'auto-advance q1 -> q2');
-    await p.click('#sector' + sector); await sleep(300);
+    await p.click('#sector' + sector); await sleep(60);
+    check(await step(p) === 'q2', 'choosing a workplace does not auto-advance (up to two answers)');
+    await clickNext(p);
     check(await step(p) === 'rank', 'technology risk ranking after the background questions');
     for (const t of rank || []) { await p.click('.trk[data-t="' + t + '"]'); await sleep(30); }
     await clickNext(p);
@@ -125,12 +127,22 @@ async function riskScreenChecks(p, label){
   check(!(await p.isVisible('#notice')), 'Close button closes the notice');
   await p.check('#consent'); await sleep(30);
   check(!!(await state(p)).consentAt, 'consent time recorded');
-  await clickNext(p); await p.click('#exp1'); await sleep(300); await p.click('#sector1'); await sleep(300);
+  await clickNext(p);
+  check((await h2(p)) === 'How many years have you worked in carbon removal or carbon capture and storage?', 'experience question wording');
+  await p.click('#exp1'); await sleep(300);
+  await p.click('#sector0'); await p.click('#sector2'); await sleep(60);
+  check(await p.$eval('#sector4', e => e.disabled) && !(await p.$eval('#sector0', e => e.disabled)), 'a third workplace cannot be chosen');
+  await p.click('#sector0'); await sleep(60);
+  check(!(await p.$eval('#sector4', e => e.disabled)) && JSON.stringify((await state(p)).sector) === '[2]', 'unticking frees a choice again');
+  await p.click('#sector1'); await sleep(60);
+  check(JSON.stringify((await state(p)).sector) === '[1,2]', 'two workplaces stored');
+  await clickNext(p);
   const rk0 = await p.$$eval('.trk', e => e.map(x => x.dataset.t).join(','));
-  check(rk0 === 'dac_ss,dac_ls,beccs,biochar,erw,cew,oae_ec,oae_min,ccs_pow,ccs_ind', 'ranking page lists the same technologies');
+  check(rk0 === 'dac_ss,dac_ls,dac_ec,beccs,biochar,erw,cew,oae_ec,oae_min,ccs_pow,ccs_ind', 'ranking page lists the same technologies');
   await clickNext(p);
   const ids0 = await p.$$eval('input[name="cat"]', e => e.map(x => x.value).join(','));
-  check(ids0 === 'dac_ss,dac_ls,beccs,biochar,erw,cew,oae_ec,oae_min,ccs_pow,ccs_ind', 'agreed technology list (' + ids0 + ')');
+  check(await p.$$eval('.opts.cats small', e => e.length === 11 && e.every(x => x.textContent.startsWith('e.g., '))), 'every technology has an e.g., description');
+  check(ids0 === 'dac_ss,dac_ls,dac_ec,beccs,biochar,erw,cew,oae_ec,oae_min,ccs_pow,ccs_ind', 'agreed technology list (' + ids0 + ')');
   check(p.errors.length === 0, 'no page errors on intro: ' + p.errors.join(' | '));
   await ctx.close();
 
@@ -160,7 +172,7 @@ async function riskScreenChecks(p, label){
   await p.click('#back'); await sleep(60);
   check(await step(p) === 'plan', 'Back from the baseline card returns to the explanation screen');
   const planTxt = await appText(p);
-  check(planTxt.includes('3 parts') && planTxt.includes('Co-product') && planTxt.includes('Co-host') && planTxt.includes('e.g., water'), 'explanation screen lists the parts and defines co-product and co-host');
+  check(planTxt.includes('3 parts') && planTxt.includes('Co-product') && planTxt.includes('Definition: Co-product') && planTxt.includes('Definition: Co-host') && !planTxt.includes('e.g.,'), 'explanation screen lists the parts and defines co-product and co-host');
   await ctx.close();
 
   // ---------- S1 (clean run): editor completes three interviews
@@ -169,7 +181,7 @@ async function riskScreenChecks(p, label){
   await about(p, 1, 2, 'dac_ss');
   await rateAll(p, 'sa', [[4,3],[3,3],'ns',[2,4],[3,2],[4,4],[1,3],[2,2],[5,5]]);
   check(await step(p) === 'wsa', 'baseline importance after baseline risks');
-  check((await h2(p)).includes('the baseline DAC: solid sorbent project'), 'baseline importance names the baseline project');
+  check((await h2(p)) === 'Rank the importance of these risks' && (await appText(p)).includes('For the baseline DAC: solid sorbent project'), 'importance heading, naming the baseline project below it');
   check(await p.$$eval('.wn', e => e.map(x => x.textContent).join('|')) === TITLES.join('|'), 'importance rows use the risk titles');
   await p.fill('#w-TEC', '9'); await clickNext(p);
   check(await step(p) === 'cp', 'co-product card after baseline importance');
@@ -181,7 +193,7 @@ async function riskScreenChecks(p, label){
   await riskScreenChecks(p, 'co-product');
   check((await p.$eval('.tag.part', e => e.textContent)) === 'Part 2 · Solid-sorbent DAC selling recovered water', 'part 2 label');
   await rateAll(p, 'cp', P9(3, 3));
-  check(await step(p) === 'wcp' && (await h2(p)).includes('co-product version'), 'co-product importance');
+  check(await step(p) === 'wcp' && (await appText(p)).includes('co-product version'), 'co-product importance');
   await clickNext(p);
   check(await step(p) === 'ch' && (await h2(p)) === 'DAC at a data centre', 'co-host card');
   check((await appText(p)).includes('What changes from the baseline') && (await appText(p)).includes('Data-centre owner'), 'co-host card lists what changes');
@@ -190,7 +202,7 @@ async function riskScreenChecks(p, label){
   check(await p.$$eval('#app .cell span', els => els.length) === 0, 'part 3 grid shows no earlier labels');
   for (const v of [[3,3],[3,3],[3,2],[2,4],[4,3],[3,3],[2,3],[2,2],[4,4]]) { await p.click(`.cell[data-l="${v[0]}"][data-i="${v[1]}"]`); await sleep(330); }
   check(await step(p) === 'wch', 'co-host importance after co-host risks');
-  check((await h2(p)).includes('(DAC at a data centre)'), 'importance question keeps DAC in capitals');
+  check((await appText(p)).includes('(DAC at a data centre)'), 'importance question keeps DAC in capitals');
   await p.click('.info[data-i="CUR"]'); await sleep(30);
   check(await p.isVisible('#d-CUR'), 'info opens definition');
   await p.click('.info[data-i="TEC"]'); await sleep(30);
@@ -344,7 +356,7 @@ async function riskScreenChecks(p, label){
   check(await until(async () => (await h2(p)) === 'Thank you for your time!'), 'respondent sees saved response after clearing browser draft (restored from record)');
   await p.click('#another'); await sleep(60);
   s = await state(p);
-  check(s.step === 'q3' && s.exp === 2 && s.sector === 1 && s.consent && s.cat === null && !s.done && !s.rid, 'Evaluate another technology keeps background and consent, clears the rest');
+  check(s.step === 'q3' && s.exp === 2 && JSON.stringify(s.sector) === '[1]' && s.consent && s.cat === null && !s.done && !s.rid, 'Evaluate another technology keeps background and consent, clears the rest');
   check(s.activeMs < 1500 && Object.keys(s.stepMs || {}).length <= 1 && Date.now() - Date.parse(s.startedAt) < 3000, 'Evaluate another technology restarts the timer');
   check(p.errors.length === 0, 'no page errors in respondent run: ' + p.errors.join(' | '));
   await ctx.close();
@@ -394,6 +406,17 @@ async function riskScreenChecks(p, label){
   const cf = new URLSearchParams(p.posts[1] || '');
   check(cf.get('entry.269220021') === 'CONTACT|' + sent.rid && cf.get('entry.530102048').split('|').slice(3).join('|') === 'Test Person|Test Org|test@example.org', 'contact row linked by response number');
   check((await appText(p)).includes('We will contact you'), 'contact confirmation shown');
+  // early preprint: separate from the interview offer, not linked to the response number
+  check(await p.isVisible('#ppe') && (await appText(p)).includes('If you’d like to receive an early preprint, please enter your email.'), 'preprint offer shown separately');
+  const nPosts = p.posts.length;
+  await p.fill('#ppe', 'bad'); await p.click('#ppsend'); await sleep(60);
+  check((await p.$eval('#pperr', e => e.textContent)).length > 0 && p.posts.length === nPosts, 'invalid preprint email is not sent');
+  await p.fill('#ppe', 'reader@example.org'); await p.click('#ppsend'); await sleep(300);
+  check(p.posts.length === nPosts + 1, 'preprint email sent as its own form row');
+  const pf = new URLSearchParams(p.posts[p.posts.length - 1] || '');
+  const ppRow = (pf.get('entry.530102048') || '').split('|');
+  check(pf.get('entry.269220021') === 'PREPRINT' && ppRow[0] === 'PP1' && ppRow[2] === 'reader@example.org' && ppRow.length === 3 && !ppRow.join('|').includes(sent.rid), 'preprint row has no response number');
+  check((await appText(p)).includes('We will send the preprint to reader@example.org'), 'preprint confirmation shown');
   await p.click('#another'); await sleep(60);
   check(await step(p) === 'q3', 'Evaluate another technology returns to the technology question');
   check(p.errors.length === 0, 'no page errors without runtime: ' + p.errors.join(' | '));
@@ -464,7 +487,7 @@ async function riskScreenChecks(p, label){
   const cellBox = await p.$eval('.cell', e => e.getBoundingClientRect().width);
   check(cellBox >= 40, 'grid squares stay tappable on phone (' + Math.round(cellBox) + 'px)');
   await rateAll(p, 'sa', P9(3, 3)); await clickNext(p);
-  check(await step(p) === 'cp' && (await h2(p)) === 'BECCS at a biomethane plant', 'BECCS co-product is the biomethane plant');
+  check(await step(p) === 'cp' && (await h2(p)) === 'Biomass plant turning its CO₂ into methane' && (await appText(p)).includes('no removal credits'), 'BECCS co-product: CO₂ turned into methane, no removal credits');
   await clickNext(p); await rateAll(p, 'cp', P9(3, 3));
   const rw = await p.evaluate(() => [document.documentElement.scrollWidth, innerWidth]);
   check(rw[0] <= rw[1], 'importance question has no sideways scroll on phone');
