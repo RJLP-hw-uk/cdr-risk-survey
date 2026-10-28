@@ -80,7 +80,7 @@ input[type=text]:focus-visible{outline:2px solid var(--accent);outline-offset:1p
 .wdef{grid-column:1/-1;font-size:.86rem;background:var(--accent-soft);border-radius:var(--r);padding:8px 10px}
 .wrow input[type=range]{width:100%;accent-color:var(--accent);min-height:28px}
 .wscale{display:grid;grid-template-columns:minmax(0,9.5rem) minmax(0,1fr) 1.8rem 28px;gap:10px;font-size:.74rem;color:var(--ink-2)}
-.wscale span:nth-child(2){display:flex;justify-content:space-between;position:relative}
+.wscale > span:nth-child(2){display:flex;justify-content:space-between;position:relative}
 .wscale .mid{position:absolute;left:calc(44.4% - 2px)}
 .wrow .wn{font-weight:700;font-size:.9rem;line-height:1.2}
 .wv{text-align:right;font-weight:700}
@@ -965,6 +965,17 @@ td.num{text-align:center}
     }, {passive:true});
   }
 
+  // Soft check on the slider pages: the first Next with unset rows marks them, shows the message just above the first
+  // unset row and scrolls there. (Shown at the end of the card, the message pulled a long page to the bottom, away
+  // from the rows still to answer.) The message hides again once any slider is answered.
+  function warnUnset(id, rows, text){
+    var e = document.getElementById(id); if (!e || !rows.length) return;
+    rows.forEach(function(row){ row.classList.add("need"); });
+    rows[0].parentNode.insertBefore(e, rows[0]);
+    e.textContent = text; e.hidden = false;
+    try { e.scrollIntoView({block:"start"}); } catch (x) {}
+  }
+
   // Baseline: one page, one coloured slider per risk, 0 (negligible) … 10 (severe). A slider reads "Not set" until it is
   // moved or tapped, so a middle value is only recorded when chosen; "Not sure" records that the risk cannot be judged.
   function bvText(x){ return isRate(x) ? x + " / 10" : x === "ns" ? "Not sure" : "Not set"; }
@@ -986,10 +997,10 @@ td.num{text-align:center}
       '<p class="muted small">For ' + esc(catName()) + ' as normally deployed. Think about how likely problems are over the project’s life and how much they would cost, across everything in each category. Tap <i>i</i> for a definition.</p></div>' +
       '<div class="bscale" aria-hidden="true"><span>0 · Negligible</span><span>5 · Moderate</span><span>10 · Severe</span></div>' +
       '<div class="srows">' + rows + '</div>' +
-      '<p class="err" id="berr" aria-live="polite"></p>' +
+      '<p class="err" id="berr" aria-live="polite" hidden></p>' +
       '</div>' + nav(true, "Next");
     var warned = false;
-    function clearWarn(){ var e = document.getElementById("berr"); if (e) e.textContent = ""; warned = false; }
+    function clearWarn(){ var e = document.getElementById("berr"); if (e) { e.textContent = ""; e.hidden = true; } warned = false; }
     function show(id){
       var x = r[id], set = isRate(x), el = document.getElementById("b-" + id), lab = document.getElementById("bv-" + id);
       lab.textContent = bvChip(x); lab.className = "bv " + (set ? band(x) : "unset");
@@ -1011,10 +1022,9 @@ td.num{text-align:center}
     bindNav(function(){
       var n = RISKS.length - count("sa");
       if (n > 0 && !warned) {
-        warned = true; var e = document.getElementById("berr");
-        e.textContent = n + " not set (marked above). Tap a slider or Not sure to answer, or tap Next again to continue without " + (n === 1 ? "it" : "them") + ".";
-        RISKS.forEach(function(k){ if (!isRate(r[k.id]) && r[k.id] !== "ns") document.getElementById("b-" + k.id).closest(".srow").classList.add("need"); });
-        try { e.scrollIntoView({block:"nearest"}); } catch (x) {}
+        warned = true;
+        warnUnset("berr", RISKS.filter(function(k){ return !isRate(r[k.id]) && r[k.id] !== "ns"; }).map(function(k){ return document.getElementById("b-" + k.id).closest(".srow"); }),
+          n + " not set (highlighted below). Tap a slider or Not sure to answer, or tap Next again to continue without " + (n === 1 ? "it" : "them") + ".");
         return;
       }
       go(1);
@@ -1043,14 +1053,14 @@ td.num{text-align:center}
       '<p class="muted small">Compared with the baseline you just rated. Rate the risk to the whole project, across all its revenue. Move or tap each slider; <i>Same</i> is a valid answer. Tap <i>i</i> for a definition.</p>' +
       '<div class="cscale" aria-hidden="true"><span>Much lower</span><span>Lower</span><span>Same</span><span>Higher</span><span>Much higher</span></div>' +
       '<div class="srows">' + rows + '</div>' +
-      '<p class="err" id="cerr" aria-live="polite"></p>' +
+      '<p class="err" id="cerr" aria-live="polite" hidden></p>' +
       '</div>' + nav(true, "Next");
     function setFrom(el){
       var id = el.dataset.c, x = +el.value - 3; r[id] = x; persist();
       var lab = document.getElementById("cv-" + id); lab.textContent = CHG[x + 2]; lab.classList.remove("unset");
       el.classList.remove("unset"); el.setAttribute("aria-valuetext", CHG[x + 2]);
       el.closest(".srow").classList.remove("need");
-      var e = document.getElementById("cerr"); if (e) e.textContent = ""; warned = false;
+      var e = document.getElementById("cerr"); if (e) { e.textContent = ""; e.hidden = true; } warned = false;
     }
     app.querySelectorAll('input[type=range][data-c]').forEach(function(el){ onAnswer(el, setFrom); });
     app.querySelectorAll(".info").forEach(function(b){ b.addEventListener("click", function(){
@@ -1063,10 +1073,9 @@ td.num{text-align:center}
     bindNav(function(){
       var n = RISKS.length - count(scn);
       if (n > 0 && !warned) {
-        warned = true; var e = document.getElementById("cerr");
-        e.textContent = n + " not set (marked above). Tap a slider to answer, even for Same, or tap Next again to continue without " + (n === 1 ? "it" : "them") + ".";
-        RISKS.forEach(function(k){ if (!isChg(r[k.id])) document.getElementById("c-" + k.id).closest(".srow").classList.add("need"); });
-        try { e.scrollIntoView({block:"nearest"}); } catch (x) {}
+        warned = true;
+        warnUnset("cerr", RISKS.filter(function(k){ return !isChg(r[k.id]); }).map(function(k){ return document.getElementById("c-" + k.id).closest(".srow"); }),
+          n + " not set (highlighted below). Tap a slider to answer, even for Same, or tap Next again to continue without " + (n === 1 ? "it" : "them") + ".");
         return;
       }
       go(1);

@@ -94,6 +94,18 @@ async function about(p, exp, sector, cat, rank){
   await clickNext(p);
 }
 const B7 = x => Array(NR).fill(x);
+// After a Next with unset sliders: the message sits just above the first unset row and both are in view in the scroll area.
+const warnPlaced = (p, msgId, firstId) => p.evaluate(([m, f]) => {
+  const e = document.getElementById(m), row = document.getElementById(f).closest('.srow'), sc = document.getElementById('scroll').getBoundingClientRect();
+  const inView = el => { const r = el.getBoundingClientRect(); return r.top >= sc.top - 1 && r.bottom <= sc.bottom + 1; };
+  return !e.hidden && e.nextElementSibling === row && inView(e) && inView(row);
+}, [msgId, firstId]);
+// Importance page: the 1 / 5 / 10 labels sit over the slider positions they name (the 5 label used to sit next to the 10).
+const scaleLabelsOk = p => p.evaluate(() => {
+  const sl = document.querySelector('input[data-w]').getBoundingClientRect();
+  const c = [...document.querySelectorAll('.wscale > span:nth-child(2) > span')].map(e => { const r = e.getBoundingClientRect(); return (r.left + r.width / 2 - sl.left) / sl.width; });
+  return c.length === 3 && c[0] < 0.08 && c[1] > 0.38 && c[1] < 0.5 && c[2] > 0.88;
+});
 const C7 = x => Array(NR).fill(x);
 // Comparison page of a co-product / co-host part: vals = change per risk in ORDER, -2 (much lower) … +2 (much higher).
 async function compareAll(p, scn, vals){
@@ -176,13 +188,15 @@ async function baselineChecks(p, label){
   const socEx = await p.$eval('#b-SOC', e => e.closest('.brow').querySelector('.bex span').textContent);
   check(socEx.includes('Class VI') && socEx.includes(', or residents or landowners oppose'), 'merged category shows the permit and the acceptance example (' + socEx.slice(0, 60) + '…)');
   check(!/certifier deducts/.test(await appText(p)), 'certification example not shown');
+  check(await p.$eval('#berr', e => e.hidden), 'no warning before Next');
   await clickNext(p);
-  check(await step(p) === 'sa:rate' && (await p.$eval('#berr', e => e.textContent)).startsWith('7 not set (marked above)') && (await p.$eval('#berr', e => e.textContent)).includes('Not sure') && await p.$$eval('.srow.need', e => e.length) === 7, 'first Next with unset sliders warns, marks the rows and stays');
+  check(await step(p) === 'sa:rate' && (await p.$eval('#berr', e => e.textContent)).startsWith('7 not set (highlighted below)') && (await p.$eval('#berr', e => e.textContent)).includes('Not sure') && await p.$$eval('.srow.need', e => e.length) === 7, 'first Next with unset sliders warns, marks the rows and stays');
+  check(await warnPlaced(p, 'berr', 'b-TEC'), 'warning shown just above the first unset row, both in view (not at the bottom of the page)');
   await p.fill('#b-TEC', '7'); await p.fill('#b-PRI', '2'); await p.fill('#b-POL', '5');
   check((await state(p)).ratings.sa.TEC === 7 && (await p.$eval('#bv-TEC', e => e.textContent)) === '7 / 10', 'moving a slider records 0–10 and shows the value');
   check(await p.$eval('#bv-TEC', e => e.classList.contains('hi')) && await p.$eval('#bv-PRI', e => e.classList.contains('lo')) && await p.$eval('#bv-POL', e => e.classList.contains('mid')), 'value label coloured low / middle / high');
   check(await p.$eval('#b-TEC', e => !e.classList.contains('unset') && getComputedStyle(e).filter === 'none'), 'set slider shows full colour');
-  check(await p.$eval('#berr', e => e.textContent) === '' && await p.$$eval('.srow.need', e => e.length) === 4, 'warning clears once a slider is set; answered rows lose their mark');
+  check(await p.$eval('#berr', e => e.textContent === '' && e.hidden) && await p.$$eval('.srow.need', e => e.length) === 4, 'warning clears and hides once a slider is set; answered rows lose their mark');
   await p.click('#b-CON'); await sleep(30);
   check((await state(p)).ratings.sa.CON === 5 && (await p.$eval('#bv-CON', e => e.textContent)) === '5 / 10', 'tapping a slider at the middle records 5');
   await p.click('.nsb[data-n="CUR"]'); await sleep(30);
@@ -227,6 +241,7 @@ async function baselineChecks(p, label){
   await rateBaseline(p, [7,5,'ns',6,3,8,1]);
   check(await step(p) === 'wsa', 'baseline importance after the baseline page');
   check((await h2(p)) === 'Rank the importance of these risks' && (await appText(p)).includes('For the baseline DAC: solid sorbent project'), 'importance heading, naming the baseline project below it');
+  check(await scaleLabelsOk(p), 'importance scale labels 1, 5 and 10 sit over their slider positions');
   check(await p.$$eval('.wn', e => e.map(x => x.textContent).join('|')) === TITLES.join('|'), 'importance rows use the risk titles');
   await p.fill('#w-TEC', '9'); await clickNext(p);
   check(await step(p) === 'cp', 'co-product card after baseline importance');
@@ -253,6 +268,7 @@ async function baselineChecks(p, label){
   check(!(await p.isVisible('#d-CPT')), 'i button hides it again');
   await clickNext(p);
   check(await step(p) === 'cp:cmp' && (await p.$eval('#cerr', e => e.textContent)).startsWith('7 not set') && await p.isVisible('#cerr'), 'first Next with unset sliders warns and stays');
+  check(await warnPlaced(p, 'cerr', 'c-TEC'), 'comparison page: warning shown just above the first unset row, both in view');
   await p.click('#c-CON'); await sleep(30);
   check((await state(p)).ratings.cp.CON === 0 && await p.$eval('#cv-CON', e => e.textContent) === 'Same', 'tapping a slider at the middle records Same');
   check(await p.$eval('#cerr', e => e.textContent) === '', 'warning clears once a slider is set');
@@ -576,6 +592,7 @@ async function baselineChecks(p, label){
   await compareAll(p, 'cp', [0, 1, -1, 0, 0, 1, 0]);
   const rw = await p.evaluate(() => [document.documentElement.scrollWidth, innerWidth]);
   check(rw[0] <= rw[1], 'importance question has no sideways scroll on phone');
+  check(await scaleLabelsOk(p), 'importance scale labels over their slider positions on phone');
   await p.screenshot({path: path.join(__dirname, 'phone-rank.png')});
   check(p.errors.length === 0, 'no page errors on phone: ' + p.errors.join(' | '));
   await ctx.close();
@@ -595,7 +612,8 @@ async function baselineChecks(p, label){
   check(await tapAt('TEC', 0.5) === 'Same' && (await state(p)).ratings.ch.TEC === 0, 'a phone tap on a slider at the middle records Same');
   check(await tapAt('PRI', 0.95) === 'Much higher' && (await state(p)).ratings.ch.PRI === 2, 'a phone tap near the end records Much higher');
   await p.tap('#next'); await sleep(150);
-  check(await step(p) === 'ch:cmp' && await p.$$eval('.srow.need', e => e.length) === 5 && (await p.$eval('#cerr', e => e.textContent)).startsWith('5 not set (marked above)'), 'Next with unset sliders marks the 5 unset rows');
+  check(await step(p) === 'ch:cmp' && await p.$$eval('.srow.need', e => e.length) === 5 && (await p.$eval('#cerr', e => e.textContent)).startsWith('5 not set (highlighted below)'), 'Next with unset sliders marks the 5 unset rows');
+  check(await warnPlaced(p, 'cerr', 'c-POL'), 'phone: warning shown just above the first unset row (policy), both in view');
   for (const id of ['POL', 'CUR', 'CON', 'CPT', 'SOC']) await tapAt(id, 0.5);
   check(await p.$$eval('.srow.need', e => e.length) === 0 && await p.$eval('#cerr', e => e.textContent) === '', 'answering clears the marks and the warning');
   await p.tap('#next'); await sleep(200);
@@ -620,7 +638,8 @@ async function baselineChecks(p, label){
   await p.tap('.nsb[data-n="CUR"]'); await sleep(100);
   check((await state(p)).ratings.sa.CUR === 'ns', 'a phone tap on Not sure records it');
   await p.tap('#next'); await sleep(150);
-  check(await step(p) === 'sa:rate' && await p.$$eval('.srow.need', e => e.length) === 3 && (await p.$eval('#berr', e => e.textContent)).startsWith('3 not set (marked above)'), 'Next with unset sliders marks the 3 unset rows');
+  check(await step(p) === 'sa:rate' && await p.$$eval('.srow.need', e => e.length) === 3 && (await p.$eval('#berr', e => e.textContent)).startsWith('3 not set (highlighted below)'), 'Next with unset sliders marks the 3 unset rows');
+  check(await warnPlaced(p, 'berr', 'b-CON'), 'phone: warning shown just above the first unset row (cost), both in view');
   await tapB('CON', 0.5); await p.tap('.nsb[data-n="CPT"]'); await sleep(100); await tapB('SOC', 0.5);
   check(await p.$$eval('.srow.need', e => e.length) === 0 && await p.$eval('#berr', e => e.textContent) === '', 'answering or Not sure clears the marks and the warning');
   await p.tap('#next'); await sleep(200);
