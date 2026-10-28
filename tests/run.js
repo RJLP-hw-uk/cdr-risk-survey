@@ -65,13 +65,16 @@ async function intro(p){
   await clickNext(p);
 }
 // From any start up to the first risk of the baseline (sa:TEC).
-async function about(p, exp, sector, cat){
+async function about(p, exp, sector, cat, rank){
   const s0 = await step(p);
   if (s0 === undefined || s0 === 'intro') await intro(p);
   if (await step(p) === 'q1') {
     await p.click('#exp' + exp); await sleep(300);
     check(await step(p) === 'q2', 'auto-advance q1 -> q2');
     await p.click('#sector' + sector); await sleep(300);
+    check(await step(p) === 'rank', 'technology risk ranking after the background questions');
+    for (const t of rank || []) { await p.click('.trk[data-t="' + t + '"]'); await sleep(30); }
+    await clickNext(p);
   }
   check(await step(p) === 'q3', 'technology question reached');
   await p.click('#c-' + cat); await sleep(50);
@@ -92,6 +95,13 @@ async function riskScreenChecks(p, label){
   const txt = await appText(p);
   check(!/on its own/.test(txt), label + ': no "on its own" in the risk screen');
   check(!/revenue is lost/.test(txt), label + ': impact axis sentence removed');
+  const mx = await p.$eval('.matrix', e => e.textContent);
+  check(!/%/.test(mx) && /Impact/.test(mx) && (await p.$eval('.axis', e => e.textContent)) === '↑ Likelihood', label + ': axes read Likelihood / Impact, no percentages');
+  check(!(await p.isVisible('#qdef')), label + ': definition hidden by default');
+  await p.click('#qi'); await sleep(30);
+  check(await p.isVisible('#qdef') && (await p.$eval('#qdef', e => e.textContent)).length > 20, label + ': i button shows the definition');
+  await p.click('#qi'); await sleep(30);
+  check(!(await p.isVisible('#qdef')), label + ': i button hides it again');
 }
 
 (async () => {
@@ -116,6 +126,9 @@ async function riskScreenChecks(p, label){
   await p.check('#consent'); await sleep(30);
   check(!!(await state(p)).consentAt, 'consent time recorded');
   await clickNext(p); await p.click('#exp1'); await sleep(300); await p.click('#sector1'); await sleep(300);
+  const rk0 = await p.$$eval('.trk', e => e.map(x => x.dataset.t).join(','));
+  check(rk0 === 'dac_ss,dac_ls,beccs,biochar,erw,cew,oae_ec,oae_min,ccs_pow,ccs_ind', 'ranking page lists the same technologies');
+  await clickNext(p);
   const ids0 = await p.$$eval('input[name="cat"]', e => e.map(x => x.value).join(','));
   check(ids0 === 'dac_ss,dac_ls,beccs,biochar,erw,cew,oae_ec,oae_min,ccs_pow,ccs_ind', 'agreed technology list (' + ids0 + ')');
   check(p.errors.length === 0, 'no page errors on intro: ' + p.errors.join(' | '));
@@ -177,6 +190,7 @@ async function riskScreenChecks(p, label){
   check(await p.$$eval('#app .cell span', els => els.length) === 0, 'part 3 grid shows no earlier labels');
   for (const v of [[3,3],[3,3],[3,2],[2,4],[4,3],[3,3],[2,3],[2,2],[4,4]]) { await p.click(`.cell[data-l="${v[0]}"][data-i="${v[1]}"]`); await sleep(330); }
   check(await step(p) === 'wch', 'co-host importance after co-host risks');
+  check((await h2(p)).includes('(DAC at a data centre)'), 'importance question keeps DAC in capitals');
   await p.click('.info[data-i="CUR"]'); await sleep(30);
   check(await p.isVisible('#d-CUR'), 'info opens definition');
   await p.click('.info[data-i="TEC"]'); await sleep(30);
@@ -227,7 +241,9 @@ async function riskScreenChecks(p, label){
   await p.click('#exp0'); await p.click('#next'); await sleep(400);
   check(await step(p) === 'q2', 'quick select + Next does not skip a question (q2)');
   await p.click('#sector0'); await p.click('#next'); await sleep(400);
-  check(await step(p) === 'q3', 'quick select + Next does not skip a question (q3)');
+  check(await step(p) === 'rank', 'quick select + Next does not skip a question (rank)');
+  await p.click('#tskip'); await sleep(60);
+  check(await step(p) === 'q3', 'Skip on the ranking goes to the technology question');
   await p.click('#c-erw'); await clickNext(p);
   check(await step(p) === 'plan' && !(await appText(p)).includes('Co-host') && (await appText(p)).includes('normally deployed'), 'one-part explanation for a technology without variants');
   await clickNext(p);
@@ -254,6 +270,9 @@ async function riskScreenChecks(p, label){
   for (let k = 0; k < 4; k++) await p.click('#back');
   await sleep(60);
   check(await step(p) === 'q3', 'Back reaches technology question');
+  await p.click('#back'); await sleep(60);
+  check(await step(p) === 'rank', 'Back from the technology question reaches the ranking');
+  await clickNext(p);
   await p.click('#c-cew'); await clickNext(p); await clickNext(p); await clickNext(p);
   check(Object.keys((await state(p)).ratings.sa).length === 0, 'changing technology clears earlier ratings');
   await rateAll(p, 'sa', P9(3, 4)); await clickNext(p);
@@ -333,7 +352,7 @@ async function riskScreenChecks(p, label){
   // ---------- S3: no runtime (public page) -> Google Form; a skipped part; interview offer
   console.log('S3 public page');
   ({ctx, page: p} = await newCtx(browser, 'none'));
-  await about(p, 0, 4, 'dac_ss');
+  await about(p, 0, 4, 'dac_ss', ['beccs', 'dac_ss', 'erw', 'dac_ss', 'dac_ss']);
   await rateAll(p, 'sa', P9(2, 2)); await clickNext(p);
   check(await step(p) === 'cp', 'co-product card reached');
   await p.click('#pskip'); await sleep(60);
@@ -350,18 +369,19 @@ async function riskScreenChecks(p, label){
   const code = form.get('entry.269220021') || '';
   check(code.startsWith('CDRRISK2.'), 'form POST carries the answer code');
   const cols = (form.get('entry.530102048') || '').split('|'); const hdr = await p.evaluate(() => window.__tableHeader);
-  check(cols.length === hdr.length && hdr.length === 97, 'table record has one value per header column (' + cols.length + '/' + hdr.length + ')');
-  check(cols[0] === 'R4' && cols[7] === 'DAC: solid sorbent' && cols[8] === 'Solid-sorbent DAC selling recovered water (skipped)' && cols[9] === 'DAC at a data centre', 'table record names technology and parts');
+  check(cols.length === hdr.length && hdr.length === 98, 'table record has one value per header column (' + cols.length + '/' + hdr.length + ')');
+  check(cols[0] === 'R5' && cols[7] === 'DAC: solid sorbent' && cols[8] === 'Solid-sorbent DAC selling recovered water (skipped)' && cols[9] === 'DAC at a data centre', 'table record names technology and parts');
   check(cols[hdr.indexOf('BL Technology risk likelihood')] === '2' && cols[hdr.indexOf('CH Acceptance risk impact')] === '2' && cols[hdr.indexOf('CP Technology risk likelihood')] === '' &&
         cols[hdr.indexOf('BL importance Policy risk')] === '5' && cols[hdr.indexOf('CP importance Policy risk')] === '' && cols[hdr.indexOf('CH importance Certification risk')] === '5', 'table record values in the right columns');
   check(!!cols[hdr.indexOf('consent_at')], 'table record carries consent time');
-  check(hdr.slice(-4).join() === 'started_at,total_seconds,active_seconds,seconds_per_screen', 'timing columns at the end');
+  check(hdr.slice(-5).join() === 'started_at,total_seconds,active_seconds,seconds_per_screen,technology_risk_rank', 'timing and ranking columns at the end');
+  check(cols[97] === '1=BECCS;2=Enhanced rock weathering;3=DAC: solid sorbent', 'technology ranking recorded in tap order, re-tap removes (' + cols[97] + ')');
   const tStart = cols[hdr.indexOf('started_at')], tTot = +cols[hdr.indexOf('total_seconds')], tAct = +cols[hdr.indexOf('active_seconds')], tScr = cols[hdr.indexOf('seconds_per_screen')];
   check(!isNaN(Date.parse(tStart)) && Date.parse(tStart) <= Date.parse(cols[1]), 'started_at is a time before submission (' + tStart + ')');
   check(tTot >= 1 && tAct >= 1 && tAct <= tTot + 1, 'total and active seconds recorded (' + tTot + ' / ' + tAct + ')');
   check(/^intro=\d+;q1=\d+;/.test(tScr) && tScr.includes('sa:TEC=') && tScr.includes('ch:CER=') && !tScr.includes('cp:TEC=') && tScr.includes('review='), 'seconds per screen recorded in survey order (' + tScr.slice(0, 60) + '…)');
   const sent = JSON.parse(Buffer.from(code.slice(9), 'base64').toString('utf8'));
-  check(sent.v === 5 && sent.timing && sent.timing.totalS === tTot && sent.cat === 'dac_ss' && Object.keys(sent.ratings.sa).length === 9 && Object.keys(sent.ratings.cp).length === 0 && Object.keys(sent.ratings.ch).length === 9 && sent.parts.cp.skipped === true && sent.weights.cp === null && sent.rid && sent.consent.given, 'decoded form payload is complete');
+  check(sent.v === 5 && (sent.techRank || []).join() === 'beccs,erw,dac_ss' && sent.timing && sent.timing.totalS === tTot && sent.cat === 'dac_ss' && Object.keys(sent.ratings.sa).length === 9 && Object.keys(sent.ratings.cp).length === 0 && Object.keys(sent.ratings.ch).length === 9 && sent.parts.cp.skipped === true && sent.weights.cp === null && sent.rid && sent.consent.given, 'decoded form payload is complete');
   check(await p.$eval('#bk', e => e.value) === code, 'backup code matches what was sent');
   // interview offer
   await p.click('#iv1'); await sleep(40);

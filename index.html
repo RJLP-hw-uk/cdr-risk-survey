@@ -67,6 +67,11 @@ input[type=text]:focus-visible{outline:2px solid var(--accent);outline-offset:1p
 @media (min-width:560px){.opts.cats{grid-template-columns:1fr 1fr}}
 .opts.cats .opt label{flex-direction:column;align-items:flex-start;gap:0;padding:5px 12px;line-height:1.2}
 .opts.cats .opt label small{text-align:left}
+.trk{width:100%;display:flex;gap:10px;align-items:center;text-align:left;padding:6px 12px;border:1px solid var(--rule);border-radius:var(--r);background:var(--surface);cursor:pointer;line-height:1.2}
+.trk.on{border-color:var(--accent);background:var(--accent-soft)}
+.trk:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.trn{flex:none;width:1.5rem;height:1.5rem;border-radius:50%;border:1px solid var(--rule);display:grid;place-items:center;font-weight:700;font-size:.8rem}
+.trk.on .trn{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .wrows{display:grid;gap:6px}
 .wrow{display:grid;grid-template-columns:minmax(0,9.5rem) minmax(0,1fr) 1.8rem 28px;gap:10px;align-items:center}
 .info{width:26px;height:26px;border-radius:50%;border:1px solid var(--ink-2);background:transparent;color:var(--ink-2);font:700 .8rem/1 var(--f-body);font-style:italic;cursor:pointer}
@@ -107,6 +112,9 @@ button{font:inherit;color:inherit}
 .xlab{flex-direction:column;justify-content:flex-start;text-align:center;padding-top:3px}
 .ylab b,.xlab b{color:var(--ink)}
 .axis{font-size:.82rem;font-weight:700;color:var(--ink-2)}
+.xaxis{grid-column:2/-1;text-align:center;line-height:1.2}
+.qhead{display:flex;gap:8px;align-items:center}
+.qhead .info{width:22px;height:22px;font-size:.72rem}
 .cell{width:var(--cell);height:var(--cell);overflow:hidden;border:1px solid transparent;border-radius:4px;padding:3px;display:flex;flex-wrap:wrap;align-content:flex-start;gap:2px;cursor:pointer}
 .cell.low{background:var(--h-low)}.cell.mid{background:var(--h-mid)}.cell.high{background:var(--h-high)}
 .cell:hover{border-color:var(--ink-2)}
@@ -478,11 +486,11 @@ td.num{text-align:center}
 
   var RISKS = [
     {id:"TEC", k:"tec", ab:"TECH", name:"Technology risk", q:"The technology performs worse than designed", def:"Once running, the equipment or process removes less CO₂, or costs more to operate, than designed."},
-    {id:"PRI", k:"pri", ab:"PRICE", name:"Price risk", q:"Prices received are lower than planned", def:"The price received for each tonne of CO₂ removed, or for other products and services, is lower or less stable than planned."},
+    {id:"PRI", k:"pri", ab:"PRICE", name:"Price risk", q:"Prices received are lower or more volatile than planned", def:"The price received per tonne of CO₂ removed, or for co-products and services, is lower than planned or varies more than expected."},
     {id:"POL", k:"pol", ab:"POL", name:"Policy risk", q:"Government support is cut or changed", def:"Governments cut or change the subsidies, tax credits or support schemes the project depends on."},
     {id:"CUR", k:"cur", ab:"T&S", name:"Transport and storage risk", q:"CO₂ transport or storage is not available when needed", def:"The infrastructure that takes the CO₂ (or the removal material) to storage is not available, or the transport or storage operator does not meet its contract."},
     {id:"CON", k:"con", ab:"COST", name:"Cost risk", q:"Upfront costs are higher than expected", def:"Spending needed before the first revenue (equipment, site work, development) ends up higher than expected."},
-    {id:"CPT", k:"cpt", ab:"CPTY", name:"Counterparty risk", q:"A buyer or partner does not pay or pulls out", def:"A buyer, supplier or partner does not pay, or pulls out of a contract."},
+    {id:"CPT", k:"cpt", ab:"CPTY", name:"Counterparty risk", q:"A buyer or partner does not pay or pulls out", def:"A contract party does not pay or pulls out. Buyer: a company that has agreed to buy the removal credits or co-products (offtaker). Partner: a company the project relies on, e.g., the host site, or a feedstock or energy supplier."},
     {id:"PER", k:"per", ab:"REG", name:"Regulatory risk", q:"Permits or approvals are refused, delayed or withdrawn", def:"Permits, licences or approvals the project needs are refused, delayed or withdrawn, or the rules on how it must operate change."},
     {id:"SOC", k:"soc", ab:"ACC", name:"Acceptance risk", q:"Local people or groups oppose the project", def:"Local communities, landowners or interest groups oppose the project, which slows or stops it."},
     {id:"CER", k:"cer", ab:"CERT", name:"Certification risk", q:"Removed CO₂ cannot be fully credited", def:"The removal cannot be measured or verified to the certifier’s standard, so credits are deducted, delayed or refused."}
@@ -507,7 +515,7 @@ td.num{text-align:center}
 
   // ---------------- state
   var KEY = "cdr-risk-survey-v6";
-  function blank(){ return {step:"intro", consent:false, consentAt:null, exp:null, sector:null, cat:null, ratings:{sa:{}, cp:{}, ch:{}}, weights:{sa:{}, cp:{}, ch:{}}, rankDone:{sa:false, cp:false, ch:false}, skip:{cp:false, ch:false}, comment:"", ref:"", docId:null, rid:null, done:null, contact:null,
+  function blank(){ return {step:"intro", consent:false, consentAt:null, exp:null, sector:null, cat:null, ratings:{sa:{}, cp:{}, ch:{}}, weights:{sa:{}, cp:{}, ch:{}}, rankDone:{sa:false, cp:false, ch:false}, skip:{cp:false, ch:false}, techRank:[], comment:"", ref:"", docId:null, rid:null, done:null, contact:null,
     startedAt:new Date().toISOString(), activeMs:0, stepMs:{}}; }
   function valid(p){
     if (!p || typeof p !== "object" || !p.ratings || !p.ratings.sa || !p.ratings.cp || !p.ratings.ch || !p.weights || !p.rankDone || !p.skip) return false;
@@ -545,6 +553,7 @@ td.num{text-align:center}
   function toTop(){ try { scroller.scrollTop = 0; } catch (e) {} }
 
   function cat(){ return S.cat ? CB[S.cat] : null; }
+  function lc1(s){ s = String(s || ""); return /^[A-Z]{2}/.test(s) ? s : s.charAt(0).toLowerCase() + s.slice(1); }  // keeps DAC, BECCS, CCS
   function catName(){ var c = cat(); return c ? c.name : ""; }
   // Parts of the chosen technology: "sa" baseline, "cp" co-product, "ch" co-host (only those it has).
   var PLAB = {sa:"Baseline", cp:"Co-product", ch:"Co-host"};
@@ -561,7 +570,7 @@ td.num{text-align:center}
     return EXT[k](base);
   }
   function steps(){
-    var a = ["intro","q1","q2","q3"];
+    var a = ["intro","q1","q2","rank","q3"];
     if (!S.cat) return a;
     a.push("plan");
     partsOf(cat()).forEach(function(scn){
@@ -602,6 +611,7 @@ td.num{text-align:center}
     else if (S.step === "wsa" || S.step === "wcp" || S.step === "wch") renderRank(S.step.slice(1));
     else if (S.step === "q1") renderChoice("How many years have you worked in carbon removal or a related field?", "exp", EXP);
     else if (S.step === "q2") renderChoice("Where do you work?", "sector", SECTOR);
+    else if (S.step === "rank") renderTechRank();
     else if (S.step === "q3") renderCat();
     else if (S.step === "review") renderReview();
     else { var parts = S.step.split(":"); renderRisk(parts[0], parts[1]); }
@@ -629,15 +639,15 @@ td.num{text-align:center}
 
   function renderPlan(){
     var c = cat(), ps = partsOf(c), nm = catName();
-    var DEF = {cp:'<b>Co-product</b><span>A second product or service the same project sells besides removal credits, e.g., water recovered by a DAC plant.</span>',
-               ch:'<b>Co-host</b><span>An existing facility or company the project is built into: it shares the host’s site, infrastructure, inputs or permits, and the host often owns and finances it, e.g., DAC at a data centre.</span>'};
+    var DEF = {cp:'<b>Co-product</b><span>A second product or service sold besides removal credits, e.g., water from a DAC plant.</span>',
+               ch:'<b>Co-host</b><span>An existing facility the project is built into, sharing its site, inputs or permits; often owned by the host, e.g., DAC at a data centre.</span>'};
     app.innerHTML = '<div class="card"><span class="tag part">What happens next</span>' +
-      '<div class="intro"><h2>' + esc(nm) + '</h2><p>' + (ps.length > 1 ? 'The survey has ' + ps.length + ' parts. Parts after the first are optional.' : 'You will rate this technology as it is normally deployed.') + '</p></div>' +
+      '<div class="intro"><h2>' + esc(nm) + '</h2><p>' + (ps.length > 1 ? ps.length + ' parts; parts after the first are optional.' : 'Rate this technology as normally deployed.') + '</p></div>' +
       (ps.length > 1 ? '<ol class="steps2">' + ps.map(function(scn, i){
         return '<li><span class="n">' + (i + 1) + '</span><span><b>' + PLAB[scn] + ':</b> ' + esc(scn === "sa" ? 'the technology as normally deployed.' : c[scn].name + '.') + '</span></li>';
       }).join("") + '</ol>' : '') +
       ps.filter(function(scn){ return DEF[scn]; }).map(function(scn){ return '<div class="def">' + DEF[scn] + '</div>'; }).join("") +
-      '<p class="small"><b>How to answer:</b> for each part, rate ' + RISKS.length + ' risks, then how much each matters. On each risk screen, tap one square: higher means the risk is more likely over the project’s life; further right means it would cost more of the project’s revenue if it happens. Use <i>Not sure</i> if you cannot judge it.</p>' +
+      '<p class="small"><b>How to answer:</b> per part, rate ' + RISKS.length + ' risks, then their importance. Tap one square per risk: up = more likely; right = more revenue lost. Tap <i>i</i> for a definition, or <i>Not sure</i>.</p>' +
       '</div>' + nav(true, "Next");
     bindNav();
   }
@@ -693,6 +703,25 @@ td.num{text-align:center}
     bindNav();
   }
 
+  // Overall ranking of the technologies by investment risk (optional, partial allowed): tap in order, tap again to remove.
+  function renderTechRank(){
+    var R = S.techRank = (S.techRank || []).filter(function(id){ return CB[id]; });
+    app.innerHTML = '<div class="card"><span class="tag">All technologies</span><h2>Rank the technologies by investment risk</h2>' +
+      '<p class="muted small">Tap from highest to lowest risk (1 = highest). Rank only those you can judge; tap again to remove.</p><div class="opts cats">' +
+      CATS.map(function(c){
+        var n = R.indexOf(c.id) + 1;
+        return '<div class="opt"><button type="button" class="trk' + (n ? ' on' : '') + '" data-t="' + c.id + '" aria-pressed="' + (n > 0) + '"><span class="trn">' + (n || '') + '</span><span>' + esc(c.name) + '</span></button></div>';
+      }).join("") + '</div>' +
+      '<div class="row"><button class="linkbtn" id="tclear" type="button">Clear</button><button class="linkbtn" id="tskip" type="button">Skip this question</button></div>' +
+      '</div>' + nav(true, "Next");
+    app.querySelectorAll(".trk").forEach(function(b){ b.addEventListener("click", function(){
+      var id = b.dataset.t, i = R.indexOf(id); if (i >= 0) R.splice(i, 1); else R.push(id); persist(); renderTechRank();
+    }); });
+    document.getElementById("tclear").addEventListener("click", function(){ S.techRank = []; persist(); renderTechRank(); });
+    document.getElementById("tskip").addEventListener("click", function(){ S.techRank = []; persist(); go(1); });
+    bindNav();
+  }
+
   function renderCat(){
     app.innerHTML = '<div class="card"><span class="tag">About you · 3 of 3</span><h2>Which technology do you know best?</h2><p class="muted small">Pick one.</p><div class="opts cats">' +
       CATS.map(function(c){
@@ -744,14 +773,14 @@ td.num{text-align:center}
           (here ? '<span class="pick">' + k.ab + '</span>' : '') + '</button>';
       }
     }
-    cells += '<div></div>' + IMP.map(function(x, i){ return '<div class="xlab"><b>' + (i+1) + '</b><span>' + x[0] + '</span><span>' + x[1] + '</span></div>'; }).join("");
+    cells += '<div></div>' + IMP.map(function(x, i){ return '<div class="xlab"><b>' + (i+1) + '</b><span>' + x[0] + '</span></div>'; }).join("");
     var dots = RISKS.map(function(o){ return '<button type="button" class="dot' + (r[o.id] ? " done" : "") + (o.id === rid ? " cur" : "") + '" data-r="' + o.id + '" title="' + esc(o.name) + '">' + o.ab + '</button>'; }).join("");
     var part = (multi() ? 'Part ' + partNo(scn) + ' · ' : '') + esc(partName(scn));
     app.innerHTML =
       '<div class="card">' +
         '<div class="row"><span class="tag part">' + part + '</span><span class="tag">' + (ri + 1) + ' of ' + RISKS.length + '</span></div>' +
-        '<div class="qblock"><span class="tag">' + esc(k.name) + '</span><h2>' + esc(qText(k)) + '</h2><p class="muted small">' + esc(example(scn, k.k)) + ' Tap the square that fits.</p></div>' +
-        '<div><div class="axis">↑ How likely is this during the project’s life?</div><div class="matrix">' + cells + '</div></div>' +
+        '<div class="qblock"><div class="qhead"><span class="tag">' + esc(k.name) + '</span><button type="button" class="info" id="qi" aria-expanded="false" aria-controls="qdef" aria-label="What ' + esc(k.name) + ' means">i</button></div><div class="wdef" id="qdef" hidden>' + esc(k.def) + '</div><h2>' + esc(qText(k)) + '</h2><p class="muted small">' + esc(example(scn, k.k)) + ' Tap the square that fits.</p></div>' +
+        '<div><div class="axis">↑ Likelihood</div><div class="matrix">' + cells + '<div></div><div class="axis xaxis">Impact →</div></div></div>' +
         '<div class="row"><div class="dots">' + dots + '</div><button type="button" class="linkbtn" id="ns">' + (cur === "ns" ? "Marked not sure" : "Not sure") + '</button></div>' +
       '</div>' + nav(true, "Next");
     app.querySelectorAll(".cell").forEach(function(c){ c.addEventListener("click", function(){
@@ -761,13 +790,14 @@ td.num{text-align:center}
     }); });
     app.querySelectorAll(".dot").forEach(function(d){ d.addEventListener("click", function(){ S.step = scn + ":" + d.dataset.r; persist(); render(); }); });
     document.getElementById("ns").addEventListener("click", function(){ r[rid] = "ns"; persist(); go(1); });
+    document.getElementById("qi").addEventListener("click", function(){ var o = this.getAttribute("aria-expanded") !== "true"; this.setAttribute("aria-expanded", String(o)); document.getElementById("qdef").hidden = !o; });
     bindNav();
   }
 
   function readSliders(scn){ app.querySelectorAll('input[type=range][data-w]').forEach(function(el){ S.weights[scn][el.dataset.w] = +el.value; }); }
   function renderRank(scn){
     var W = S.weights[scn];
-    var subject = scn === "sa" ? (multi() ? 'the baseline ' : 'a ') + esc(catName()) + ' project' : 'the ' + PLAB[scn].toLowerCase() + ' version (' + esc(partName(scn).toLowerCase()) + ')';
+    var subject = scn === "sa" ? (multi() ? 'the baseline ' : 'a ') + esc(catName()) + ' project' : 'the ' + PLAB[scn].toLowerCase() + ' version (' + esc(lc1(partName(scn))) + ')';
     var rows = RISKS.map(function(k){
       var v = W[k.id] || 5;
       return '<div class="wrow"><label class="wn" for="w-' + k.id + '">' + esc(k.name) + '</label>' +
@@ -805,7 +835,7 @@ td.num{text-align:center}
         '<button class="btn ghost sm" type="button" data-redo="' + x.redo + '">Redo</button></div>';
     }).join("") + '</div>';
   }
-  function another(){ var keep = {exp:S.exp, sector:S.sector, consent:S.consent, consentAt:S.consentAt, ref:S.ref}; S = Object.assign(blank(), keep, {step:"q3"}); persist(); render(); toTop(); }
+  function another(){ var keep = {exp:S.exp, sector:S.sector, techRank:S.techRank, consent:S.consent, consentAt:S.consentAt, ref:S.ref}; S = Object.assign(blank(), keep, {step:"q3"}); persist(); render(); toTop(); }
   function bindParts(){
     app.querySelectorAll("[data-redo]").forEach(function(b){ b.addEventListener("click", function(){
       var scn = b.dataset.redo; S.done = null;
@@ -842,6 +872,7 @@ td.num{text-align:center}
       parts:{cp:part("cp"), ch:part("ch")},
       ratings:{sa:rat("sa"), cp:rat("cp"), ch:rat("ch")},
       weights:{sa:wt("sa"), cp:wt("cp"), ch:wt("ch")},
+      techRank:(S.techRank || []).filter(function(id){ return CB[id]; }),
       comment:(S.comment || "").slice(0, 2000)};
     o.timing = timing(o.submittedAt);
     if (!S.rid) S.rid = "r-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
@@ -878,13 +909,13 @@ td.num{text-align:center}
   var TABLE_HEADER = ["format","submitted_at","response_id","reference","mode","experience","sector","technology","co_product_version","co_host_version"]
     .concat(["sa","cp","ch"].reduce(function(a, scn){ return a.concat(RISKS.reduce(function(b, k){ return b.concat([TPRE[scn] + " " + k.name + " likelihood", TPRE[scn] + " " + k.name + " impact"]); }, [])); }, []))
     .concat(["sa","cp","ch"].reduce(function(a, scn){ return a.concat(RISKS.map(function(k){ return TPRE[scn] + " importance " + k.name; })); }, []))
-    .concat(["consent_at","comment","started_at","total_seconds","active_seconds","seconds_per_screen"]);
+    .concat(["consent_at","comment","started_at","total_seconds","active_seconds","seconds_per_screen","technology_risk_rank"]);
   // Importance weights: v5 {sa,cp,ch}; v3/v4 {sa,int}; v2 one set for the stand-alone part.
   function wOf(o, scn){ var w = o.weights; if (!w) return null; if ("sa" in w || "int" in w || "cp" in w || "ch" in w) return w[scn] || null; return scn === "sa" ? w : null; }
   function tableRow(o){
     function li(v, j){ return Array.isArray(v) ? v[j] : v === "ns" ? "not sure" : ""; }
     var pt = o.parts || {};
-    var f = ["R4", o.submittedAt, o.rid, o.ref || "", o.mode || "online", o.exp, o.sector, o.catName,
+    var f = ["R5", o.submittedAt, o.rid, o.ref || "", o.mode || "online", o.exp, o.sector, o.catName,
       pt.cp ? pt.cp.name + (pt.cp.skipped ? " (skipped)" : "") : "", pt.ch ? pt.ch.name + (pt.ch.skipped ? " (skipped)" : "") : ""];
     ["sa","cp","ch"].forEach(function(scn){ var r = o.ratings[scn] || {}; RISKS.forEach(function(k){ var v = r[k.id]; f.push(li(v, 0), li(v, 1)); }); });
     ["sa","cp","ch"].forEach(function(scn){ var W = wOf(o, scn); RISKS.forEach(function(k){ f.push(W ? W[k.id] : ""); }); });
@@ -892,6 +923,8 @@ td.num{text-align:center}
     var tm = o.timing || {};
     f.push(tm.startedAt || "", tm.totalS == null ? "" : tm.totalS, tm.activeS == null ? "" : tm.activeS,
       Object.keys(tm.steps || {}).map(function(k){ return k + "=" + tm.steps[k]; }).join(";"));
+    // R5: technology risk ranking appended, "1=BECCS;2=DAC: solid sorbent;…" (1 = highest risk)
+    f.push((o.techRank || []).map(function(id, i){ return (i + 1) + "=" + (CB[id] ? CB[id].name : id); }).join(";"));
     return f.map(function(x){ return String(x == null ? "" : x).replace(/[|\r\n\t]+/g, " "); }).join("|");
   }
   window.__tableHeader = TABLE_HEADER;

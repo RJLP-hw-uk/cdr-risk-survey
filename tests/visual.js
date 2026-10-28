@@ -29,7 +29,7 @@ let fails=0; const check=(c,m)=>{ if(!c){fails++; console.log('  FAIL: '+m);} };
      if (r.doc[0]>r.doc[1] || r.doc[2]>r.doc[3]) docScroll++;
      if (r.inner) innerScroll.push(label);
    };
-   await snap('intro'); await p.check('#consent'); await p.click('#next'); await sleep(60); await snap('q1'); await p.click('#exp1'); await sleep(260); await snap('q2'); await p.click('#sector1'); await sleep(260); await snap('q3');
+   await snap('intro'); await p.check('#consent'); await p.click('#next'); await sleep(60); await snap('q1'); await p.click('#exp1'); await sleep(260); await snap('q2'); await p.click('#sector1'); await sleep(260); await snap('rank'); await p.click('.trk[data-t="beccs"]'); await p.click('#next'); await sleep(60); await snap('q3');
    await p.click('#c-'+catId); await p.click('#next'); await sleep(60); await snap('plan'); await p.click('#next'); await sleep(60);
    for (let k=0;k<50;k++){ const st=await p.evaluate(()=>JSON.parse(localStorage.getItem('cdr-risk-survey-v6')).step); if(st==='wsa'||st==='wch'){await snap(st);} if(st==='review'||(st==='wsa'&&catId==='erw')||st==='wch'){ break; }
      await snap(st); if (await p.$('.cell')) { await p.click('.cell[data-l="'+(1+k%5)+'"][data-i="'+(1+(k*2)%5)+'"]'); await sleep(300); } else { await p.click('#next'); await sleep(60); } }
