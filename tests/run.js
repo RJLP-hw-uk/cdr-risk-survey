@@ -3,7 +3,7 @@
 //       then one variant (co-product or co-host; a technology with both gets one at random): part card -> one comparison page
 //       (7 sliders, much lower … much higher than the baseline) -> importance -> review -> thank-you screen (interview offer).
 //       The variant can be skipped on its card. Contexts can fix Math.random (opts.random) to choose the variant.
-const { chromium } = require('playwright');
+const { chromium, devices } = require('playwright');
 const path = require('path');
 // Serve the page over local http: with file:// URLs headless Chromium sometimes loses localStorage on reload.
 const http = require('http'), fs = require('fs');
@@ -552,6 +552,29 @@ async function riskScreenChecks(p, label){
   check(rw[0] <= rw[1], 'importance question has no sideways scroll on phone');
   await p.screenshot({path: path.join(__dirname, 'phone-rank.png')});
   check(p.errors.length === 0, 'no page errors on phone: ' + p.errors.join(' | '));
+  await ctx.close();
+
+  // ---------- S8: phone touch on the comparison page (taps that leave the value unchanged must count)
+  console.log('S8 phone touch');
+  ctx = await browser.newContext({...devices['Pixel 7']});
+  await ctx.addInitScript(k => { if (sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded', '1');
+    localStorage.setItem(k, JSON.stringify({step:'ch:cmp', consent:true, exp:1, sector:[1], cat:'cew', ratings:{sa:{TEC:[3,3],PRI:[3,3],POL:[3,3],CUR:[3,3],CON:[3,3],CPT:[3,3],SOC:[3,3]},cp:{},ch:{}},
+      weights:{sa:{},cp:{},ch:{}}, rankDone:{sa:true,cp:false,ch:false}, skip:{cp:false,ch:false}, variant:null, techRank:[]})); }, KEY);
+  p = await ctx.newPage(); p.errors = []; p.on('pageerror', e => p.errors.push(e.message));
+  await p.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+  await p.goto(PAGE); await sleep(250);
+  check(await step(p) === 'ch:cmp', 'touch test starts on the co-host comparison page');
+  const tapAt = async (id, frac) => { const el = await p.$('#c-' + id); await el.scrollIntoViewIfNeeded(); const bb = await el.boundingBox();
+    await p.touchscreen.tap(bb.x + bb.width * frac, bb.y + bb.height / 2); await sleep(150); return p.$eval('#cv-' + id, e => e.textContent); };
+  check(await tapAt('TEC', 0.5) === 'Same' && (await state(p)).ratings.ch.TEC === 0, 'a phone tap on a slider at the middle records Same');
+  check(await tapAt('PRI', 0.95) === 'Much higher' && (await state(p)).ratings.ch.PRI === 2, 'a phone tap near the end records Much higher');
+  await p.tap('#next'); await sleep(150);
+  check(await step(p) === 'ch:cmp' && await p.$$eval('.srow.need', e => e.length) === 5 && (await p.$eval('#cerr', e => e.textContent)).startsWith('5 not set (marked above)'), 'Next with unset sliders marks the 5 unset rows');
+  for (const id of ['POL', 'CUR', 'CON', 'CPT', 'SOC']) await tapAt(id, 0.5);
+  check(await p.$$eval('.srow.need', e => e.length) === 0 && await p.$eval('#cerr', e => e.textContent) === '', 'answering clears the marks and the warning');
+  await p.tap('#next'); await sleep(200);
+  check(await step(p) === 'wch', 'one tap on Next moves on once every slider is answered');
+  check(p.errors.length === 0, 'no page errors with touch: ' + p.errors.join(' | '));
   await ctx.close();
 
   await browser.close(); server.close();

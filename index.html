@@ -95,6 +95,8 @@ input[type=text]:focus-visible{outline:2px solid var(--accent);outline-offset:1p
 .chead .cn{flex:1 1 auto;min-width:0;font-weight:700;font-size:.9rem;line-height:1.2}
 .cv{font-size:.82rem;font-weight:700;text-align:right}
 .cv.unset{color:var(--ink-2);font-weight:400}
+.srow.need .cv.unset{color:var(--warn);font-weight:700}
+.srow.need{border-top-color:var(--warn)}
 .srow input[type=range]{width:100%;margin:0;min-height:28px;accent-color:var(--accent)}
 .srow input[type=range].unset{accent-color:var(--ink-2)}
 @media (max-width:420px){.wrow,.wscale{grid-template-columns:minmax(0,6.5rem) minmax(0,1fr) 1.6rem 28px}}
@@ -1020,11 +1022,22 @@ td.num{text-align:center}
       var id = el.dataset.c, x = +el.value - 3; r[id] = x; persist();
       var lab = document.getElementById("cv-" + id); lab.textContent = CHG[x + 2]; lab.classList.remove("unset");
       el.classList.remove("unset"); el.setAttribute("aria-valuetext", CHG[x + 2]);
+      el.closest(".srow").classList.remove("need");
       var e = document.getElementById("cerr"); if (e) e.textContent = ""; warned = false;
     }
+    // A tap that leaves the value unchanged (e.g. on "Same") fires no input event. Mouse clicks fire "click";
+    // touch taps on a phone fire neither, so a pointer or touch that ends where it started also counts.
+    // A finger that moves more than 10 px is a scroll, not an answer (the browser then cancels the pointer).
     app.querySelectorAll('input[type=range][data-c]').forEach(function(el){
+      var t0 = null;
       el.addEventListener("input", function(){ setFrom(el); });
-      el.addEventListener("click", function(){ setFrom(el); });   // a tap on the thumb at "Same" also counts as an answer
+      el.addEventListener("change", function(){ setFrom(el); });
+      el.addEventListener("click", function(){ setFrom(el); });
+      el.addEventListener("pointerup", function(){ setFrom(el); });
+      el.addEventListener("touchstart", function(e){ var p = e.changedTouches[0]; t0 = [p.clientX, p.clientY]; }, {passive:true});
+      el.addEventListener("touchend", function(e){
+        var p = e.changedTouches[0]; if (t0 && Math.abs(p.clientX - t0[0]) < 10 && Math.abs(p.clientY - t0[1]) < 10) setFrom(el); t0 = null;
+      }, {passive:true});
     });
     app.querySelectorAll(".info").forEach(function(b){ b.addEventListener("click", function(){
       var open = b.getAttribute("aria-expanded") === "true";
@@ -1037,7 +1050,8 @@ td.num{text-align:center}
       var n = RISKS.length - count(scn);
       if (n > 0 && !warned) {
         warned = true; var e = document.getElementById("cerr");
-        e.textContent = n + " not set. Tap Next again to continue without " + (n === 1 ? "it" : "them") + ".";
+        e.textContent = n + " not set (marked above). Tap a slider to answer, even for Same, or tap Next again to continue without " + (n === 1 ? "it" : "them") + ".";
+        RISKS.forEach(function(k){ if (!isChg(r[k.id])) document.getElementById("c-" + k.id).closest(".srow").classList.add("need"); });
         try { e.scrollIntoView({block:"nearest"}); } catch (x) {}
         return;
       }
