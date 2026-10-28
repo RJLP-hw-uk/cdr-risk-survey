@@ -125,6 +125,7 @@ async function riskScreenChecks(p, label){
   await p.click('#pn'); await sleep(60);
   check(await p.isVisible('#notice'), 'privacy notice opens');
   check((await p.$eval('#notice', e => e.textContent)).includes('Data Protection Officer'), 'notice gives the Data Protection Officer');
+  check((await p.$eval('#notice', e => e.textContent)).includes('your ranking of the technologies') && (await p.$eval('#notice', e => e.textContent)).includes('which version of it you were shown') && (await p.$eval('#notice', e => e.textContent)).includes('2026-10-28c'), 'notice lists the ranking and the assigned version (v2026-10-28c)');
   await p.keyboard.press('Escape'); await sleep(40);
   check(!(await p.isVisible('#notice')), 'Escape closes the notice');
   await p.click('#pn'); await sleep(40); await p.click('#nclose'); await sleep(40);
