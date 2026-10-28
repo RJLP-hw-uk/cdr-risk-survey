@@ -1,8 +1,9 @@
-// End-to-end click tests for the survey page (v9 flow) against a mocked claude.ai runtime.
+// End-to-end click tests for the survey page (v10 flow) against a mocked claude.ai runtime.
 // Flow: intro + consent -> 3 background questions -> "what happens next" -> baseline: part card -> one page of 7 coloured
-//       0–10 sliders ("How large do you think each risk is?") -> importance;
+//       0–10 sliders ("How large do you think each risk is?");
 //       then one variant (co-product or co-host; a technology with both gets one at random): part card -> one comparison page
-//       (7 sliders, much lower … much higher than the baseline) -> importance -> review -> thank-you screen (interview offer).
+//       (7 sliders, much lower … much higher than the baseline) -> importance (once, last, for the technology in general)
+//       -> review -> thank-you screen (interview offer).
 //       The variant can be skipped on its card. Contexts can fix Math.random (opts.random) to choose the variant.
 const { chromium, devices } = require('playwright');
 const path = require('path');
@@ -19,7 +20,7 @@ const server = http.createServer((req, res) => {
 const listening = new Promise(r => server.listen(0, '127.0.0.1', () => r(server.address().port)));
 let PAGE;
 const MOCK = require('fs').readFileSync(path.join(__dirname, 'mock.js'), 'utf8');
-const KEY = 'cdr-risk-survey-v10';
+const KEY = 'cdr-risk-survey-v11';
 const ORDER = ['TEC','PRI','POL','CUR','CON','CPT','SOC'];
 const TITLES = ['Technology risk','Price risk','Policy risk','Supply chain risk','Cost risk','Counterparty risk','Permitting and acceptance risk'];
 const NR = ORDER.length;
@@ -94,6 +95,18 @@ async function about(p, exp, sector, cat, rank){
   await clickNext(p);
 }
 const B7 = x => Array(NR).fill(x);
+// After a Next with unset sliders: the message sits just above the first unset row and both are in view in the scroll area.
+const warnPlaced = (p, msgId, firstId) => p.evaluate(([m, f]) => {
+  const e = document.getElementById(m), row = document.getElementById(f).closest('.srow'), sc = document.getElementById('scroll').getBoundingClientRect();
+  const inView = el => { const r = el.getBoundingClientRect(); return r.top >= sc.top - 1 && r.bottom <= sc.bottom + 1; };
+  return !e.hidden && e.nextElementSibling === row && inView(e) && inView(row);
+}, [msgId, firstId]);
+// Importance page: the 1 / 5 / 10 labels sit over the slider positions they name (the 5 label used to sit next to the 10).
+const scaleLabelsOk = p => p.evaluate(() => {
+  const sl = document.querySelector('input[data-w]').getBoundingClientRect();
+  const c = [...document.querySelectorAll('.wscale > span:nth-child(2) > span')].map(e => { const r = e.getBoundingClientRect(); return (r.left + r.width / 2 - sl.left) / sl.width; });
+  return c.length === 3 && c[0] < 0.08 && c[1] > 0.38 && c[1] < 0.5 && c[2] > 0.88;
+});
 const C7 = x => Array(NR).fill(x);
 // Comparison page of a co-product / co-host part: vals = change per risk in ORDER, -2 (much lower) … +2 (much higher).
 async function compareAll(p, scn, vals){
@@ -176,13 +189,15 @@ async function baselineChecks(p, label){
   const socEx = await p.$eval('#b-SOC', e => e.closest('.brow').querySelector('.bex span').textContent);
   check(socEx.includes('Class VI') && socEx.includes(', or residents or landowners oppose'), 'merged category shows the permit and the acceptance example (' + socEx.slice(0, 60) + '…)');
   check(!/certifier deducts/.test(await appText(p)), 'certification example not shown');
+  check(await p.$eval('#berr', e => e.hidden), 'no warning before Next');
   await clickNext(p);
-  check(await step(p) === 'sa:rate' && (await p.$eval('#berr', e => e.textContent)).startsWith('7 not set (marked above)') && (await p.$eval('#berr', e => e.textContent)).includes('Not sure') && await p.$$eval('.srow.need', e => e.length) === 7, 'first Next with unset sliders warns, marks the rows and stays');
+  check(await step(p) === 'sa:rate' && (await p.$eval('#berr', e => e.textContent)).startsWith('7 not set (highlighted below)') && (await p.$eval('#berr', e => e.textContent)).includes('Not sure') && await p.$$eval('.srow.need', e => e.length) === 7, 'first Next with unset sliders warns, marks the rows and stays');
+  check(await warnPlaced(p, 'berr', 'b-TEC'), 'warning shown just above the first unset row, both in view (not at the bottom of the page)');
   await p.fill('#b-TEC', '7'); await p.fill('#b-PRI', '2'); await p.fill('#b-POL', '5');
   check((await state(p)).ratings.sa.TEC === 7 && (await p.$eval('#bv-TEC', e => e.textContent)) === '7 / 10', 'moving a slider records 0–10 and shows the value');
   check(await p.$eval('#bv-TEC', e => e.classList.contains('hi')) && await p.$eval('#bv-PRI', e => e.classList.contains('lo')) && await p.$eval('#bv-POL', e => e.classList.contains('mid')), 'value label coloured low / middle / high');
   check(await p.$eval('#b-TEC', e => !e.classList.contains('unset') && getComputedStyle(e).filter === 'none'), 'set slider shows full colour');
-  check(await p.$eval('#berr', e => e.textContent) === '' && await p.$$eval('.srow.need', e => e.length) === 4, 'warning clears once a slider is set; answered rows lose their mark');
+  check(await p.$eval('#berr', e => e.textContent === '' && e.hidden) && await p.$$eval('.srow.need', e => e.length) === 4, 'warning clears and hides once a slider is set; answered rows lose their mark');
   await p.click('#b-CON'); await sleep(30);
   check((await state(p)).ratings.sa.CON === 5 && (await p.$eval('#bv-CON', e => e.textContent)) === '5 / 10', 'tapping a slider at the middle records 5');
   await p.click('.nsb[data-n="CUR"]'); await sleep(30);
@@ -225,11 +240,7 @@ async function baselineChecks(p, label){
   await sleep(150);
   await about(p, 1, 2, 'dac_ss');
   await rateBaseline(p, [7,5,'ns',6,3,8,1]);
-  check(await step(p) === 'wsa', 'baseline importance after the baseline page');
-  check((await h2(p)) === 'Rank the importance of these risks' && (await appText(p)).includes('For the baseline DAC: solid sorbent project'), 'importance heading, naming the baseline project below it');
-  check(await p.$$eval('.wn', e => e.map(x => x.textContent).join('|')) === TITLES.join('|'), 'importance rows use the risk titles');
-  await p.fill('#w-TEC', '9'); await clickNext(p);
-  check(await step(p) === 'cp', 'co-product card after baseline importance');
+  check(await step(p) === 'cp', 'co-product card follows the baseline page directly (no importance question in between)');
   check((await h2(p)) === 'Solid-sorbent DAC selling recovered water', 'co-product title shown');
   check((await appText(p)).includes('Where the revenue comes from') && (await appText(p)).includes('recovered water'), 'co-product card states the revenue');
   check(await p.isVisible('#pskip'), 'co-product part can be skipped');
@@ -253,6 +264,7 @@ async function baselineChecks(p, label){
   check(!(await p.isVisible('#d-CPT')), 'i button hides it again');
   await clickNext(p);
   check(await step(p) === 'cp:cmp' && (await p.$eval('#cerr', e => e.textContent)).startsWith('7 not set') && await p.isVisible('#cerr'), 'first Next with unset sliders warns and stays');
+  check(await warnPlaced(p, 'cerr', 'c-TEC'), 'comparison page: warning shown just above the first unset row, both in view');
   await p.click('#c-CON'); await sleep(30);
   check((await state(p)).ratings.cp.CON === 0 && await p.$eval('#cv-CON', e => e.textContent) === 'Same', 'tapping a slider at the middle records Same');
   check(await p.$eval('#cerr', e => e.textContent) === '', 'warning clears once a slider is set');
@@ -262,8 +274,11 @@ async function baselineChecks(p, label){
   check(await step(p) === 'cp:cmp' && await p.$eval('#c-PRI', e => e.value) === '1' && await p.$eval('#cv-POL', e => e.textContent) === 'Not set', 'answers kept after Back/Next; untouched sliders still Not set');
   for (const [id, v] of [['POL', 3], ['CUR', 4], ['CPT', 2], ['SOC', 5]]) await p.fill('#c-' + id, String(v));
   await clickNext(p);
-  check(await step(p) === 'wcp' && (await appText(p)).includes('co-product version'), 'co-product importance after co-product risks');
-  check((await appText(p)).includes('(solid-sorbent DAC selling recovered water)'), 'importance question names the variant');
+  check(await step(p) === 'w' && (await h2(p)) === 'Rank the importance of these risks', 'one importance question after the last part');
+  check((await appText(p)).includes('For DAC: solid sorbent projects in general (the baseline and the co-product version).') && (await p.$eval('.tag.part', e => e.textContent)) === 'Importance', 'importance asked for the technology in general, both parts together');
+  check(await scaleLabelsOk(p), 'importance scale labels 1, 5 and 10 sit over their slider positions');
+  check(await p.$$eval('.wn', e => e.map(x => x.textContent).join('|')) === TITLES.join('|'), 'importance rows use the risk titles');
+  await p.fill('#w-TEC', '9');
   await p.click('.info[data-i="CUR"]'); await sleep(30);
   check(await p.isVisible('#d-CUR'), 'info opens definition');
   await p.click('.info[data-i="TEC"]'); await sleep(30);
@@ -277,9 +292,9 @@ async function baselineChecks(p, label){
   await clickNext(p);
   check(await p.$eval('#w-PRI', e => e.value) === '2', 'slider values kept after Back/Next');
   await p.focus('body'); await p.keyboard.press('ArrowRight'); await sleep(60);
-  check(await step(p) === 'review', 'ArrowRight leaves the last importance question; no co-host part');
+  check(await step(p) === 'review', 'ArrowRight leaves the importance question for the review; no co-host part');
   s = await state(p);
-  check(s.rankDone.sa && s.rankDone.cp && !s.rankDone.ch && s.weights.sa.TEC === 9 && s.weights.cp.PRI === 2 && s.weights.cp.SOC === 5, 'two importance sets saved');
+  check(s.rankDone === true && s.weights.TEC === 9 && s.weights.PRI === 2 && s.weights.SOC === 5 && Object.keys(s.weights).length === 7, 'one importance set saved');
   check((await appText(p)).includes('Part 2 (co-product): 7 of 7') && !(await appText(p)).includes('Part 3'), 'review summarises both parts');
   check(!(await p.$('#startover')) && !(await p.$('#change')) && !(await p.$('[data-redo]')), 'review has no Start over / Change technology / Redo buttons');
   check(await p.isVisible('#ref'), 'respondent reference field shown to editor');
@@ -290,22 +305,23 @@ async function baselineChecks(p, label){
   ids = Object.keys(st).filter(k => k.startsWith('responses/int-'));
   check(ids.length === 1, 'double-click on Submit stores exactly one record (got ' + ids.length + ')');
   const d1 = st[ids[0]];
-  check(d1 && d1.v === 8 && d1.consent && d1.consent.given === true && d1.consent.at && d1.timing && d1.timing.activeS >= 0, 'record carries consent and timing');
+  check(d1 && d1.v === 9 && d1.consent && d1.consent.given === true && d1.consent.at && d1.timing && d1.timing.activeS >= 0, 'record carries consent and timing');
   check(d1 && d1.ref === 'R1' && d1.mode === 'interview' && d1.source === 'interview', 'record carries reference and interview mode');
-  check(d1 && d1.v === 8 && Object.keys(d1.ratings.sa).length === 7 && d1.ratings.sa.POL === 'ns' && Object.keys(d1.ratings.cp).length === 7 && Object.keys(d1.ratings.ch).length === 0, 'record has 7 + 7 ratings with not-sure');
+  check(d1 && d1.v === 9 && Object.keys(d1.ratings.sa).length === 7 && d1.ratings.sa.POL === 'ns' && Object.keys(d1.ratings.cp).length === 7 && Object.keys(d1.ratings.ch).length === 0, 'record has 7 + 7 ratings with not-sure');
   check(d1 && JSON.stringify(ORDER.map(k => d1.ratings.sa[k])) === '[7,5,"ns",6,3,8,1]', 'baseline stored as 0–10 per risk (' + JSON.stringify(d1 && d1.ratings.sa) + ')');
   check(d1 && JSON.stringify(ORDER.map(k => d1.ratings.cp[k])) === '[-1,-2,0,1,0,-1,2]', 'co-product stored as change from the baseline, -2 … +2 (' + JSON.stringify(d1 && d1.ratings.cp) + ')');
   check(d1 && d1.modelStandalone === 'DAC_SS' && d1.parts.cp.model === 'new:DAC_SS_H2O' && d1.parts.ch === null && !d1.parts.cp.skipped && d1.variant === 'cp' && d1.variantRandom === true, 'record links the parts to model cases and records the random assignment');
-  check(d1 && d1.weights.sa.TEC === 9 && d1.weights.cp.PRI === 2 && d1.weights.ch === null, 'record has two importance sets');
+  check(d1 && Object.keys(d1.weights).join() === 'all' && d1.weights.all.TEC === 9 && d1.weights.all.PRI === 2 && d1.weights.all.SOC === 5, 'record has one importance set for the technology');
   check(d1 && d1.comment === 'test comment 1' && d1.exp === '2–5 years' && d1.sector === 'Academia or research', 'record has comment and background');
   check((await h2(p)) === 'Saved.', 'editor sees Saved.');
   check(await p.isVisible('#nextresp'), 'Start next response button shown');
   check(!(await p.$('[data-redo="ch"]')), 'no Redo for the variant that was not assigned');
-  await p.click('[data-redo="wcp"]'); await sleep(60);
-  check(await step(p) === 'wcp', 'Redo part 2 importance opens that question');
+  check(await p.$$eval('[data-redo]', e => e.map(x => x.dataset.redo).join()) === 'sa,cp,w', 'saved screen offers Redo for each part and one importance question');
+  await p.click('[data-redo="w"]'); await sleep(60);
+  check(await step(p) === 'w', 'Redo importance opens that question');
   await p.fill('#w-SOC', '10'); await clickNext(p); await clickNext(p); await sleep(250);
   st = await store(p); ids = Object.keys(st).filter(k => k.startsWith('responses/int-'));
-  check(ids.length === 1 && st[ids[0]].weights.cp.SOC === 10 && st[ids[0]].weights.sa.TEC === 9 && st[ids[0]].variant === 'cp', 'correction overwrites the same record, same variant');
+  check(ids.length === 1 && st[ids[0]].weights.all.SOC === 10 && st[ids[0]].weights.all.TEC === 5 && st[ids[0]].variant === 'cp' && st[ids[0]].ratings.cp.SOC === 2, 'correction overwrites the same record (importance redone from scratch, ratings kept, same variant)');
   await sleep(1200); await p.reload(); await sleep(300);
   check(await until(async () => (await h2(p)) === 'Saved.'), 'done screen survives reload');
   await p.click('#nextresp'); await sleep(60);
@@ -327,7 +343,7 @@ async function baselineChecks(p, label){
   await clickNext(p);
   check((await p.$eval('.tag.part', e => e.textContent)) === 'Enhanced rock weathering', 'one-part label is just the technology name');
   await rateBaseline(p, B7(4));
-  check(await step(p) === 'wsa', 'one-part technology goes to its importance question');
+  check(await step(p) === 'w' && (await appText(p)).includes('For Enhanced rock weathering projects in general. 1 = barely'), 'one-part technology goes to its importance question, no variant named');
   await p.click('#wskip'); await sleep(60);
   check(await step(p) === 'review', 'Skip goes to review');
   check((await appText(p)).includes('7 of 7 risks rated') && !(await appText(p)).includes('Part 2'), 'review summary for one-part technology');
@@ -335,7 +351,7 @@ async function baselineChecks(p, label){
   st = await store(p); ids = Object.keys(st).filter(k => k.startsWith('responses/int-'));
   check(ids.length === 2, 'second interview stored as a separate record');
   const d2 = ids.map(k => st[k]).find(x => x.ref === 'R2');
-  check(d2 && d2.weights.sa === null && d2.parts.cp === null && d2.parts.ch === null && d2.variant === null && d2.variantRandom === false && d2.cat === 'erw' && d2.modelStandalone === 'ERW_AG', 'one-part record has no variants or importance');
+  check(d2 && d2.weights.all === null && d2.parts.cp === null && d2.parts.ch === null && d2.variant === null && d2.variantRandom === false && d2.cat === 'erw' && d2.modelStandalone === 'ERW_AG', 'one-part record has no variants or importance');
   await p.click('#nextresp'); await sleep(60);
 
   // interview 3: change technology part-way, two-part technology, redo co-host after saving
@@ -349,11 +365,12 @@ async function baselineChecks(p, label){
   await clickNext(p);
   await p.click('#c-cew'); await clickNext(p); await clickNext(p); await clickNext(p);
   check(Object.keys((await state(p)).ratings.sa).length === 0, 'changing technology clears earlier ratings');
-  await rateBaseline(p, B7(6)); await clickNext(p);
+  await rateBaseline(p, B7(6));
   check(await step(p) === 'ch' && (await h2(p)) === 'Coastal weathering hosted by a beach-nourishment programme', 'coastal weathering goes straight to its co-host part');
   check((await p.$eval('.tag.part', e => e.textContent)) === 'Part 2 · Co-host', 'co-host numbered as part 2 when there is no co-product');
   await clickNext(p);
   await compareAll(p, 'ch', C7(-1));
+  check(await step(p) === 'w' && (await appText(p)).includes('(the baseline and the co-host version)'), 'importance after the co-host comparison page');
   await clickNext(p); // accept default sliders
   check(await step(p) === 'review', 'review reached');
   await p.fill('#ref', 'R3'); await clickNext(p); await sleep(250);
@@ -383,8 +400,8 @@ async function baselineChecks(p, label){
   const dl = await p.evaluate(() => window.__downloads.slice(-1)[0]);
   const lines = dl ? dl.data.split('\n') : [];
   check(dl && dl.filename.endsWith('.csv'), 'CSV download offered');
-  check(lines.length === 1 + (14 + 14) + (7 + 0) + (14 + 14), 'CSV has one row per rating and importance score (' + lines.length + ')');
-  check(lines.some(l => l.includes('importance co-host')) && lines.some(l => l.includes(',co-product,')), 'CSV labels the parts');
+  check(lines.length === 1 + (14 + 7) + (7 + 0) + (14 + 7), 'CSV has one row per rating and importance score (' + lines.length + ')');
+  check(lines.some(l => l.includes(',importance technology (all parts),')) && !lines.some(l => /importance (baseline|co-host|co-product)/.test(l)) && lines.some(l => l.includes(',co-product,')), 'CSV labels the parts and one importance set per response');
   check(lines[0].includes(',risk,rating_0_10,not_sure,change_vs_baseline,') && !lines[0].includes('likelihood'), 'CSV header has the 0–10 rating column');
   check(lines.some(l => /,baseline,,DAC_SS,TEC,7,0,,,/.test(l)) && lines.some(l => /,baseline,,DAC_SS,POL,,1,,,/.test(l)), 'CSV has the baseline rating and not-sure');
   check(lines.some(l => /,co-host,.*,CON,,0,1,,/.test(l)) && lines.some(l => /,co-product,.*,PRI,,0,-2,,/.test(l)), 'CSV has the change from the baseline for co-product and co-host');
@@ -406,7 +423,7 @@ async function baselineChecks(p, label){
   await sleep(200);
   check(!(await p.isVisible('#toggle-results')), 'Responses button hidden for respondent');
   await about(p, 2, 1, 'oae_min');
-  await rateBaseline(p, B7(5)); await clickNext(p);
+  await rateBaseline(p, B7(5));
   check(await step(p) === 'ch', 'mineral alkalinity has a co-host part');
   await clickNext(p); await compareAll(p, 'ch', C7(0)); await clickNext(p);
   check(!(await p.$('#ref')), 'no reference field for respondent');
@@ -429,15 +446,15 @@ async function baselineChecks(p, label){
   console.log('S3 public page');
   ({ctx, page: p} = await newCtx(browser, 'none', {random: 0.8}));
   await about(p, 0, 4, 'dac_ss', ['beccs', 'dac_ss', 'erw', 'dac_ss', 'dac_ss']);
-  await rateBaseline(p, [2,3,'ns',0,10,4,2]); await clickNext(p);
+  await rateBaseline(p, [2,3,'ns',0,10,4,2]);
   check(await step(p) === 'ch' && (await h2(p)) === 'DAC at a data centre', 'randomly assigned co-host card reached (no co-product part)');
   check((await p.$eval('.tag.part', e => e.textContent)) === 'Part 2 · Co-host', 'co-host numbered as part 2');
   check((await appText(p)).includes('What changes from the baseline') && (await appText(p)).includes('Data-centre owner'), 'co-host card lists what changes');
   await p.click('#pskip'); await sleep(60);
-  check(await step(p) === 'review', 'Skip this part goes to the review');
+  check(await step(p) === 'w' && (await appText(p)).includes('For DAC: solid sorbent projects in general. 1 = barely'), 'Skip this part goes to the importance question, which then names no variant');
   await p.click('#back'); await sleep(60);
   check(await step(p) === 'ch' && (await state(p)).skip.ch === true, 'Back returns to the skipped part card');
-  await p.click('#pskip'); await sleep(60);
+  await p.click('#pskip'); await sleep(60); await clickNext(p);
   check((await appText(p)).includes('Part 2 (co-host): skipped'), 'review shows the skipped part');
   await clickNext(p); await sleep(200);
   check(await until(async () => (await h2(p)) === 'Thank you for your time!'), 'saved via Google Form when no claude.ai runtime');
@@ -446,21 +463,22 @@ async function baselineChecks(p, label){
   const code = form.get('entry.269220021') || '';
   check(code.startsWith('CDRRISK2.'), 'form POST carries the answer code');
   const cols = (form.get('entry.530102048') || '').split('|'); const hdr = await p.evaluate(() => window.__tableHeader);
-  check(cols.length === hdr.length && hdr.length === 60, 'table record has one value per header column (' + cols.length + '/' + hdr.length + ')');
-  check(cols[0] === 'R8' && cols[7] === 'DAC: solid sorbent' && cols[8] === '' && cols[9] === 'DAC at a data centre (skipped)' && cols[10] === 'random' && hdr[10] === 'variant_assignment', 'table record names technology, assigned part and assignment');
+  check(cols.length === hdr.length && hdr.length === 46, 'table record has one value per header column (' + cols.length + '/' + hdr.length + ')');
+  check(cols[0] === 'R9' && cols[7] === 'DAC: solid sorbent' && cols[8] === '' && cols[9] === 'DAC at a data centre (skipped)' && cols[10] === 'random' && hdr[10] === 'variant_assignment', 'table record names technology, assigned part and assignment');
   check(hdr.slice(11, 18).join('|') === TITLES.map(t => 'BL ' + t + ' rating').join('|') && hdr.indexOf('BL Technology risk likelihood') < 0 && hdr.indexOf('BL Technology risk impact') < 0, 'one baseline rating column per risk, no likelihood or impact columns');
   check(cols.slice(11, 18).join('|') === '2|3|not sure|0|10|4|2', 'baseline ratings in the table record: 0–10, not sure (' + cols.slice(11, 18).join('|') + ')');
   check(cols[hdr.indexOf('CH Technology risk change')] === '' && hdr.indexOf('CH Technology risk likelihood') < 0 && hdr.indexOf('CP Permitting and acceptance risk change') > 0 &&
-        cols[hdr.indexOf('BL importance Policy risk')] === '5' && cols[hdr.indexOf('CH importance Policy risk')] === '' && hdr.indexOf('BL Certification risk likelihood') < 0 && hdr.indexOf('BL Regulatory risk likelihood') < 0, 'table record values in the right columns, 7 risks');
+        cols[hdr.indexOf('importance Policy risk')] === '5' && hdr.indexOf('BL importance Policy risk') < 0 && hdr.indexOf('CH importance Policy risk') < 0 && hdr.indexOf('BL Certification risk likelihood') < 0 && hdr.indexOf('BL Regulatory risk likelihood') < 0, 'table record values in the right columns, 7 risks');
   check(!!cols[hdr.indexOf('consent_at')], 'table record carries consent time');
   check(hdr.slice(-5).join() === 'started_at,total_seconds,active_seconds,seconds_per_screen,technology_risk_rank', 'timing and ranking columns at the end');
-  check(cols[59] === '1=BECCS;2=Enhanced rock weathering;3=DAC: solid sorbent', 'technology ranking recorded in tap order, re-tap removes (' + cols[59] + ')');
+  check(hdr.slice(32, 39).join('|') === TITLES.map(t => 'importance ' + t).join('|'), 'one importance column per risk, after the change columns');
+  check(cols[45] === '1=BECCS;2=Enhanced rock weathering;3=DAC: solid sorbent', 'technology ranking recorded in tap order, re-tap removes (' + cols[45] + ')');
   const tStart = cols[hdr.indexOf('started_at')], tTot = +cols[hdr.indexOf('total_seconds')], tAct = +cols[hdr.indexOf('active_seconds')], tScr = cols[hdr.indexOf('seconds_per_screen')];
   check(!isNaN(Date.parse(tStart)) && Date.parse(tStart) <= Date.parse(cols[1]), 'started_at is a time before submission (' + tStart + ')');
   check(tTot >= 1 && tAct >= 1 && tAct <= tTot + 1, 'total and active seconds recorded (' + tTot + ' / ' + tAct + ')');
-  check(/^intro=\d+;q1=\d+;/.test(tScr) && tScr.includes('sa=') && tScr.includes('sa:rate=') && !tScr.includes('sa:TEC=') && !tScr.includes('ch:') && !tScr.includes('cp') && tScr.includes('review='), 'seconds per screen recorded in survey order (' + tScr.slice(0, 60) + '…)');
+  check(/^intro=\d+;q1=\d+;/.test(tScr) && tScr.includes('sa=') && tScr.includes('sa:rate=') && tScr.includes(';w=') && !tScr.includes('wsa') && !tScr.includes('sa:TEC=') && !tScr.includes('ch:') && !tScr.includes('cp') && tScr.includes('review='), 'seconds per screen recorded in survey order (' + tScr.slice(0, 60) + '…)');
   const sent = JSON.parse(Buffer.from(code.slice(9), 'base64').toString('utf8'));
-  check(sent.v === 8 && sent.ratings.sa.CUR === 0 && sent.ratings.sa.CON === 10 && sent.ratings.sa.POL === 'ns' && (sent.techRank || []).join() === 'beccs,erw,dac_ss' && sent.timing && sent.timing.totalS === tTot && sent.cat === 'dac_ss' && Object.keys(sent.ratings.sa).length === 7 && Object.keys(sent.ratings.cp).length === 0 && Object.keys(sent.ratings.ch).length === 0 && sent.parts.cp === null && sent.parts.ch.skipped === true && sent.weights.ch === null && sent.variant === 'ch' && sent.variantRandom === true && sent.rid && sent.consent.given, 'decoded form payload is complete');
+  check(sent.v === 9 && sent.ratings.sa.CUR === 0 && sent.ratings.sa.CON === 10 && sent.ratings.sa.POL === 'ns' && (sent.techRank || []).join() === 'beccs,erw,dac_ss' && sent.timing && sent.timing.totalS === tTot && sent.cat === 'dac_ss' && Object.keys(sent.ratings.sa).length === 7 && Object.keys(sent.ratings.cp).length === 0 && Object.keys(sent.ratings.ch).length === 0 && sent.parts.cp === null && sent.parts.ch.skipped === true && Object.keys(sent.weights).join() === 'all' && sent.weights.all.POL === 5 && sent.variant === 'ch' && sent.variantRandom === true && sent.rid && sent.consent.given, 'decoded form payload is complete');
   check(await p.$eval('#bk', e => e.value) === code, 'backup code matches what was sent');
   // interview offer
   await p.click('#iv1'); await sleep(40);
@@ -545,6 +563,9 @@ async function baselineChecks(p, label){
   await p.evaluate(k => localStorage.setItem(k, JSON.stringify({step:'sa:TEC', consent:true, cat:'erw', sector:[0], exp:0, ratings:{sa:{TEC:[3,3]},cp:{},ch:{}}, weights:{sa:{},cp:{},ch:{}}, rankDone:{}, skip:{}})), KEY);
   await p.reload(); await sleep(250);
   check(await p.isVisible('#consent'), 'a saved step from the grid version falls back to the intro');
+  await p.evaluate(k => localStorage.setItem(k, JSON.stringify({step:'wsa', consent:true, cat:'erw', sector:[0], exp:0, ratings:{sa:{TEC:5},cp:{},ch:{}}, weights:{sa:{},cp:{},ch:{}}, rankDone:{sa:false,cp:false,ch:false}, skip:{cp:false,ch:false}})), KEY);
+  await p.reload(); await sleep(250);
+  check(await p.isVisible('#consent'), 'a saved draft with per-part importance falls back to the intro');
   check(p.errors.length === 0, 'no page errors with stale state: ' + p.errors.join(' | '));
   await ctx.close();
 
@@ -564,7 +585,7 @@ async function baselineChecks(p, label){
   await p.click('.nsb[data-n="CUR"]');
   await p.screenshot({path: path.join(__dirname, 'phone-baseline.png')});
   await p.click('.nsb[data-n="CUR"]');
-  await rateBaseline(p, B7(5)); await clickNext(p);
+  await rateBaseline(p, B7(5));
   check(await step(p) === 'cp' && (await h2(p)) === 'Biomass plant turning its CO₂ into methane' && (await appText(p)).includes('no removal credits'), 'BECCS co-product: CO₂ turned into methane, no removal credits');
   await clickNext(p);
   check(await step(p) === 'cp:cmp' && (await h2(p)) === 'If the project also earned this revenue, how would these risks change?', 'BECCS co-product comparison page');
@@ -576,6 +597,7 @@ async function baselineChecks(p, label){
   await compareAll(p, 'cp', [0, 1, -1, 0, 0, 1, 0]);
   const rw = await p.evaluate(() => [document.documentElement.scrollWidth, innerWidth]);
   check(rw[0] <= rw[1], 'importance question has no sideways scroll on phone');
+  check(await scaleLabelsOk(p), 'importance scale labels over their slider positions on phone');
   await p.screenshot({path: path.join(__dirname, 'phone-rank.png')});
   check(p.errors.length === 0, 'no page errors on phone: ' + p.errors.join(' | '));
   await ctx.close();
@@ -585,7 +607,7 @@ async function baselineChecks(p, label){
   ctx = await browser.newContext({...devices['Pixel 7']});
   await ctx.addInitScript(k => { if (sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded', '1');
     localStorage.setItem(k, JSON.stringify({step:'ch:cmp', consent:true, exp:1, sector:[1], cat:'cew', ratings:{sa:{TEC:5,PRI:5,POL:5,CUR:5,CON:5,CPT:5,SOC:5},cp:{},ch:{}},
-      weights:{sa:{},cp:{},ch:{}}, rankDone:{sa:true,cp:false,ch:false}, skip:{cp:false,ch:false}, variant:null, techRank:[]})); }, KEY);
+      weights:{}, rankDone:false, skip:{cp:false,ch:false}, variant:null, techRank:[]})); }, KEY);
   p = await ctx.newPage(); p.errors = []; p.on('pageerror', e => p.errors.push(e.message));
   await p.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
   await p.goto(PAGE); await sleep(250);
@@ -595,11 +617,12 @@ async function baselineChecks(p, label){
   check(await tapAt('TEC', 0.5) === 'Same' && (await state(p)).ratings.ch.TEC === 0, 'a phone tap on a slider at the middle records Same');
   check(await tapAt('PRI', 0.95) === 'Much higher' && (await state(p)).ratings.ch.PRI === 2, 'a phone tap near the end records Much higher');
   await p.tap('#next'); await sleep(150);
-  check(await step(p) === 'ch:cmp' && await p.$$eval('.srow.need', e => e.length) === 5 && (await p.$eval('#cerr', e => e.textContent)).startsWith('5 not set (marked above)'), 'Next with unset sliders marks the 5 unset rows');
+  check(await step(p) === 'ch:cmp' && await p.$$eval('.srow.need', e => e.length) === 5 && (await p.$eval('#cerr', e => e.textContent)).startsWith('5 not set (highlighted below)'), 'Next with unset sliders marks the 5 unset rows');
+  check(await warnPlaced(p, 'cerr', 'c-POL'), 'phone: warning shown just above the first unset row (policy), both in view');
   for (const id of ['POL', 'CUR', 'CON', 'CPT', 'SOC']) await tapAt(id, 0.5);
   check(await p.$$eval('.srow.need', e => e.length) === 0 && await p.$eval('#cerr', e => e.textContent) === '', 'answering clears the marks and the warning');
   await p.tap('#next'); await sleep(200);
-  check(await step(p) === 'wch', 'one tap on Next moves on once every slider is answered');
+  check(await step(p) === 'w', 'one tap on Next moves on once every slider is answered');
   check(p.errors.length === 0, 'no page errors with touch: ' + p.errors.join(' | '));
   await ctx.close();
 
@@ -608,7 +631,7 @@ async function baselineChecks(p, label){
   ctx = await browser.newContext({...devices['Pixel 7']});
   await ctx.addInitScript(k => { if (sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded', '1');
     localStorage.setItem(k, JSON.stringify({step:'sa:rate', consent:true, exp:1, sector:[1], cat:'erw', ratings:{sa:{},cp:{},ch:{}},
-      weights:{sa:{},cp:{},ch:{}}, rankDone:{sa:false,cp:false,ch:false}, skip:{cp:false,ch:false}, variant:null, techRank:[]})); }, KEY);
+      weights:{}, rankDone:false, skip:{cp:false,ch:false}, variant:null, techRank:[]})); }, KEY);
   p = await ctx.newPage(); p.errors = []; p.on('pageerror', e => p.errors.push(e.message));
   await p.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
   await p.goto(PAGE); await sleep(250);
@@ -620,11 +643,12 @@ async function baselineChecks(p, label){
   await p.tap('.nsb[data-n="CUR"]'); await sleep(100);
   check((await state(p)).ratings.sa.CUR === 'ns', 'a phone tap on Not sure records it');
   await p.tap('#next'); await sleep(150);
-  check(await step(p) === 'sa:rate' && await p.$$eval('.srow.need', e => e.length) === 3 && (await p.$eval('#berr', e => e.textContent)).startsWith('3 not set (marked above)'), 'Next with unset sliders marks the 3 unset rows');
+  check(await step(p) === 'sa:rate' && await p.$$eval('.srow.need', e => e.length) === 3 && (await p.$eval('#berr', e => e.textContent)).startsWith('3 not set (highlighted below)'), 'Next with unset sliders marks the 3 unset rows');
+  check(await warnPlaced(p, 'berr', 'b-CON'), 'phone: warning shown just above the first unset row (cost), both in view');
   await tapB('CON', 0.5); await p.tap('.nsb[data-n="CPT"]'); await sleep(100); await tapB('SOC', 0.5);
   check(await p.$$eval('.srow.need', e => e.length) === 0 && await p.$eval('#berr', e => e.textContent) === '', 'answering or Not sure clears the marks and the warning');
   await p.tap('#next'); await sleep(200);
-  check(await step(p) === 'wsa', 'one tap on Next moves on once every risk is answered');
+  check(await step(p) === 'w', 'one tap on Next moves on once every risk is answered (rock weathering: straight to importance)');
   check(p.errors.length === 0, 'no page errors with touch on the baseline: ' + p.errors.join(' | '));
   await ctx.close();
 
