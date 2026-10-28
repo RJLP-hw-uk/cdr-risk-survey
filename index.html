@@ -103,9 +103,9 @@ button{font:inherit;color:inherit}
 .dot.done{background:var(--chip);color:var(--chip-ink);border-color:var(--chip)}
 .dot.cur{outline:2px solid var(--accent);outline-offset:1px}
 .matrix{--lab:6.6rem;--gap:3px;
-  --cell:clamp(40px, min(calc((min(100vw, 620px) - 70px - var(--lab) - 5 * var(--gap)) / 5), calc((100vh - 470px) / 5.3)), 66px);
+  --cell:clamp(40px, min(calc((min(100vw, 620px) - 70px - var(--lab) - 5 * var(--gap)) / 5), calc((100vh - 482px) / 5.3)), 66px);
   display:grid;grid-template-columns:var(--lab) repeat(5,var(--cell));gap:var(--gap);width:max-content;margin-inline:auto}
-@supports (height:100dvh){.matrix{--cell:clamp(40px, min(calc((min(100vw, 620px) - 70px - var(--lab) - 5 * var(--gap)) / 5), calc((100dvh - 470px) / 5.3)), 66px)}}
+@supports (height:100dvh){.matrix{--cell:clamp(40px, min(calc((min(100vw, 620px) - 70px - var(--lab) - 5 * var(--gap)) / 5), calc((100dvh - 482px) / 5.3)), 66px)}}
 @media (max-width:480px){.matrix{--lab:4.4rem}}
 .ylab,.xlab{font-size:.72rem;color:var(--ink-2);line-height:1.15;display:flex;align-items:center}
 .ylab{justify-content:flex-end;text-align:right;padding-right:6px}
@@ -628,19 +628,19 @@ td.num{text-align:center}
   };
 
   // Order and names as agreed with co-authors (28 Oct 2026). "Removal estimate" is dropped (overlaps with technology);
-  // "Curtailed tonnes" becomes transport and storage. CER (certification) is a proposed ninth category for the
-  // crediting part that the old removal-estimate and curtailment questions covered.
+  // "Curtailed tonnes" becomes transport and storage, then supply chain.
+  // v7 (shorter survey): 7 categories, one per model risk type except RES. Regulatory (PER) and Acceptance (SOC) are
+  // merged into one category with id SOC; Certification (CER) is folded into Technology. The EXAMPLES table keeps
+  // the reviewed per/soc/cer texts: the merged category shows the per and soc examples together, cer is not shown.
 
   var RISKS = [
-    {id:"TEC", k:"tec", ab:"TECH", name:"Technology risk", q:"The technology performs worse than designed", def:"Performance once running: the equipment or process captures or removes less CO₂, uses more energy, wears out sooner or breaks down more often than designed. Cost overruns before operation are cost risk."},
+    {id:"TEC", k:"tec", ab:"TECH", name:"Technology risk", q:"The technology performs worse than designed", def:"Performance once running: the equipment or process captures or removes less CO₂, uses more energy, wears out sooner or breaks down more often than designed. This includes removal that cannot be measured or verified to the certifier’s standard, so fewer credits are issued. Cost overruns before operation are cost risk."},
     {id:"PRI", k:"pri", ab:"PRICE", name:"Price risk", q:"Prices received are lower or more volatile than planned", def:"The price received per tonne of CO₂ removed, or for co-products and services, is lower than planned or varies more than expected."},
     {id:"POL", k:"pol", ab:"POL", name:"Policy risk", q:"Government support is cut or changed", def:"Governments cut or change the subsidies, tax credits or support schemes the project depends on."},
     {id:"CUR", k:"cur", ab:"SUPPLY", name:"Supply chain risk", q:"Inputs or logistics are not available when needed", def:"Feedstock, materials, energy, equipment or CO₂ transport and storage are not available on time, in the quantity or quality needed, or become much more expensive. A contract party pulling out is counterparty risk."},
     {id:"CON", k:"con", ab:"COST", name:"Cost risk", q:"Upfront costs are higher than expected", def:"Spending needed before the first revenue (equipment, site work, development) ends up higher than expected."},
     {id:"CPT", k:"cpt", ab:"CPTY", name:"Counterparty risk", q:"A buyer or partner does not pay or pulls out", def:"A contract party does not pay or pulls out. Buyer: a company that has agreed to buy the removal credits or co-products (offtaker). Partner: a company the project relies on, e.g., the host site, or a feedstock or energy supplier."},
-    {id:"PER", k:"per", ab:"REG", name:"Regulatory risk", q:"Permits or approvals are refused, delayed or withdrawn", def:"Permits, licences or approvals the project needs are refused, delayed or withdrawn, or the rules on how it must operate change."},
-    {id:"SOC", k:"soc", ab:"ACC", name:"Acceptance risk", q:"Local people or groups oppose the project", def:"Local communities, landowners or interest groups oppose the project, which slows or stops it."},
-    {id:"CER", k:"cer", ab:"CERT", name:"Certification risk", q:"Removed CO₂ cannot be fully credited", def:"The removal cannot be measured or verified to the certifier’s standard, so credits are deducted, delayed or refused."}
+    {id:"SOC", k:"soc", ab:"PERMIT", name:"Permitting and acceptance risk", q:"Permits are refused or delayed, or people oppose the project", def:"Permits, licences or approvals the project needs are refused, delayed or withdrawn, or the rules on how it must operate change; or local communities, landowners or interest groups oppose the project, which slows or stops it."}
   ];
   var EXT = {
     tec:function(x){ return "e.g., " + x + "."; },
@@ -661,8 +661,8 @@ td.num{text-align:center}
   var RB = {}; RISKS.forEach(function(k){ RB[k.id] = k; });
 
   // ---------------- state
-  var KEY = "cdr-risk-survey-v7";
-  function blank(){ return {step:"intro", consent:false, consentAt:null, exp:null, sector:[], cat:null, ratings:{sa:{}, cp:{}, ch:{}}, weights:{sa:{}, cp:{}, ch:{}}, rankDone:{sa:false, cp:false, ch:false}, skip:{cp:false, ch:false}, techRank:[], comment:"", ref:"", docId:null, rid:null, done:null, contact:null, preprint:null,
+  var KEY = "cdr-risk-survey-v8";
+  function blank(){ return {step:"intro", consent:false, consentAt:null, exp:null, sector:[], cat:null, ratings:{sa:{}, cp:{}, ch:{}}, weights:{sa:{}, cp:{}, ch:{}}, rankDone:{sa:false, cp:false, ch:false}, skip:{cp:false, ch:false}, variant:null, techRank:[], comment:"", ref:"", docId:null, rid:null, done:null, contact:null, preprint:null,
     startedAt:new Date().toISOString(), activeMs:0, stepMs:{}}; }
   function valid(p){
     if (!p || typeof p !== "object" || !Array.isArray(p.sector) || !p.ratings || !p.ratings.sa || !p.ratings.cp || !p.ratings.ch || !p.weights || !p.rankDone || !p.skip) return false;
@@ -705,7 +705,14 @@ td.num{text-align:center}
   // Parts of the chosen technology: "sa" baseline, "cp" co-product, "ch" co-host (only those it has).
   var PLAB = {sa:"Baseline", cp:"Co-product", ch:"Co-host"};
   var ROWS = [["where","Site and infrastructure"],["earns","Revenue"],["owner","Owner and finance"]];
-  function partsOf(c){ return c ? ["sa"].concat(c.cp ? ["cp"] : [], c.ch ? ["ch"] : []) : ["sa"]; }
+  // One variant per respondent: a technology with both a co-product and a co-host version shows one of them,
+  // assigned at random when the technology is chosen (S.variant); otherwise the only variant it has, if any.
+  function variantOf(c){
+    if (!c) return null;
+    if (c.cp && c.ch) { if (S.variant !== "cp" && S.variant !== "ch") S.variant = Math.random() < 0.5 ? "cp" : "ch"; return S.variant; }
+    return c.cp ? "cp" : c.ch ? "ch" : null;
+  }
+  function partsOf(c){ var v = variantOf(c); return v ? ["sa", v] : ["sa"]; }
   function multi(){ return partsOf(cat()).length > 1; }
   function partNo(scn){ return partsOf(cat()).indexOf(scn) + 1; }
   function partName(scn){ var c = cat(); return scn === "sa" ? catName() : (c && c[scn] ? c[scn].name : ""); }
@@ -713,7 +720,9 @@ td.num{text-align:center}
   function qText(k){ var c = cat(); return (c && c.q && c.q[k.k]) || k.q; }
   function example(scn, k){
     var c = cat(), E = c ? EXAMPLES[c.id] : null;
-    var f = (E && E[scn] && E[scn][k]) || (E && E.sa && E.sa[k]) || GENERIC[k];
+    function one(k){ return (E && E[scn] && E[scn][k]) || (E && E.sa && E.sa[k]) || GENERIC[k]; }
+    // Permitting and acceptance (merged category): the reviewed permit example, then the acceptance example.
+    var f = k === "soc" ? one("per") + ", or " + one("soc") : one(k);
     return "e.g., " + f + ".";
   }
   function steps(){
@@ -892,7 +901,8 @@ td.num{text-align:center}
       }).join("") + '</div></div>' + nav(true, "Next", !!S.cat);
     app.querySelectorAll('input[name="cat"]').forEach(function(el){ el.addEventListener("change", function(){
       if (S.cat && S.cat !== el.value) { var b0 = blank(); S.ratings = b0.ratings; S.weights = b0.weights; S.rankDone = b0.rankDone; S.skip = b0.skip; }
-      S.cat = el.value; persist(); document.getElementById("next").disabled = false;
+      if (S.cat !== el.value) S.variant = null;
+      S.cat = el.value; variantOf(CB[S.cat]); persist(); document.getElementById("next").disabled = false;
     }); });
     bindNav();
   }
@@ -1025,13 +1035,13 @@ td.num{text-align:center}
 
   function payload(){
     var c = cat(), ps = partsOf(c);
-    function part(scn){ return c[scn] ? {name:c[scn].name, model:c[scn].model || null, skipped:!!S.skip[scn]} : null; }
+    function part(scn){ return c[scn] && ps.indexOf(scn) >= 0 ? {name:c[scn].name, model:c[scn].model || null, skipped:!!S.skip[scn]} : null; }
     function rat(scn){ return ps.indexOf(scn) >= 0 && !(scn !== "sa" && S.skip[scn]) ? Object.assign({}, S.ratings[scn]) : {}; }
     function wt(scn){ return ps.indexOf(scn) >= 0 && S.rankDone[scn] && !(scn !== "sa" && S.skip[scn]) ? Object.assign({}, S.weights[scn]) : null; }
     tick();
-    var o = {v:5, submittedAt:new Date().toISOString(), consent:{given:!!S.consent, at:S.consentAt, notice:NOTICE_VERSION}, exp:EXP[S.exp], sector:(S.sector || []).map(function(i){ return SECTOR[i]; }).join("; "), sectors:(S.sector || []).map(function(i){ return SECTOR[i]; }),
+    var o = {v:6, submittedAt:new Date().toISOString(), consent:{given:!!S.consent, at:S.consentAt, notice:NOTICE_VERSION}, exp:EXP[S.exp], sector:(S.sector || []).map(function(i){ return SECTOR[i]; }).join("; "), sectors:(S.sector || []).map(function(i){ return SECTOR[i]; }),
       cat:S.cat, catName:catName(), modelStandalone:c.sa || null,
-      parts:{cp:part("cp"), ch:part("ch")},
+      parts:{cp:part("cp"), ch:part("ch")}, variant:ps[1] || null, variantRandom:!!(c.cp && c.ch),
       ratings:{sa:rat("sa"), cp:rat("cp"), ch:rat("ch")},
       weights:{sa:wt("sa"), cp:wt("cp"), ch:wt("ch")},
       techRank:(S.techRank || []).filter(function(id){ return CB[id]; }),
@@ -1046,7 +1056,7 @@ td.num{text-align:center}
   function decode(code){
     var s = String(code).replace(/\s+/g, ""); if (s.indexOf("CDRRISK2.") !== 0) throw new Error("Not an answer code for this survey version.");
     var bin = atob(s.slice(9)), b = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i);
-    var o = JSON.parse(new TextDecoder().decode(b)); if (!o || [2,3,4,5].indexOf(o.v) < 0 || !o.ratings || !o.ratings.sa) throw new Error("Incomplete answer code.");
+    var o = JSON.parse(new TextDecoder().decode(b)); if (!o || [2,3,4,5,6].indexOf(o.v) < 0 || !o.ratings || !o.ratings.sa) throw new Error("Incomplete answer code.");
     return o;
   }
   // Google Forms refuses background (fetch) posts from other sites, so answers are sent as an ordinary form
@@ -1068,24 +1078,25 @@ td.num{text-align:center}
   // One readable record per response, "|"-separated in a fixed column order (see TABLE_HEADER), so the
   // Google Sheet can spread it into columns with one formula: =SPLIT(cell, "|", TRUE, FALSE)
   var TPRE = {sa:"BL", cp:"CP", ch:"CH"};
-  var TABLE_HEADER = ["format","submitted_at","response_id","reference","mode","experience","sector","technology","co_product_version","co_host_version"]
+  var TABLE_HEADER = ["format","submitted_at","response_id","reference","mode","experience","sector","technology","co_product_version","co_host_version","variant_assignment"]
     .concat(["sa","cp","ch"].reduce(function(a, scn){ return a.concat(RISKS.reduce(function(b, k){ return b.concat([TPRE[scn] + " " + k.name + " likelihood", TPRE[scn] + " " + k.name + " impact"]); }, [])); }, []))
     .concat(["sa","cp","ch"].reduce(function(a, scn){ return a.concat(RISKS.map(function(k){ return TPRE[scn] + " importance " + k.name; })); }, []))
     .concat(["consent_at","comment","started_at","total_seconds","active_seconds","seconds_per_screen","technology_risk_rank"]);
-  // Importance weights: v5 {sa,cp,ch}; v3/v4 {sa,int}; v2 one set for the stand-alone part.
+  // Importance weights: v5/v6 {sa,cp,ch}; v3/v4 {sa,int}; v2 one set for the stand-alone part.
   function wOf(o, scn){ var w = o.weights; if (!w) return null; if ("sa" in w || "int" in w || "cp" in w || "ch" in w) return w[scn] || null; return scn === "sa" ? w : null; }
   function tableRow(o){
     function li(v, j){ return Array.isArray(v) ? v[j] : v === "ns" ? "not sure" : ""; }
     var pt = o.parts || {};
-    var f = ["R5", o.submittedAt, o.rid, o.ref || "", o.mode || "online", o.exp, o.sector, o.catName,
-      pt.cp ? pt.cp.name + (pt.cp.skipped ? " (skipped)" : "") : "", pt.ch ? pt.ch.name + (pt.ch.skipped ? " (skipped)" : "") : ""];
+    // R6: 7 risks; variant_assignment = "random" when the technology has both variants and one was assigned at random.
+    var f = ["R6", o.submittedAt, o.rid, o.ref || "", o.mode || "online", o.exp, o.sector, o.catName,
+      pt.cp ? pt.cp.name + (pt.cp.skipped ? " (skipped)" : "") : "", pt.ch ? pt.ch.name + (pt.ch.skipped ? " (skipped)" : "") : "", o.variantRandom ? "random" : ""];
     ["sa","cp","ch"].forEach(function(scn){ var r = o.ratings[scn] || {}; RISKS.forEach(function(k){ var v = r[k.id]; f.push(li(v, 0), li(v, 1)); }); });
     ["sa","cp","ch"].forEach(function(scn){ var W = wOf(o, scn); RISKS.forEach(function(k){ f.push(W ? W[k.id] : ""); }); });
     f.push(o.consent ? o.consent.at : ""); f.push(o.comment || "");
     var tm = o.timing || {};
     f.push(tm.startedAt || "", tm.totalS == null ? "" : tm.totalS, tm.activeS == null ? "" : tm.activeS,
       Object.keys(tm.steps || {}).map(function(k){ return k + "=" + tm.steps[k]; }).join(";"));
-    // R5: technology risk ranking appended, "1=BECCS;2=DAC: solid sorbent;…" (1 = highest risk)
+    // technology risk ranking (since R5), "1=BECCS;2=DAC: solid sorbent;…" (1 = highest risk)
     f.push((o.techRank || []).map(function(id, i){ return (i + 1) + "=" + (CB[id] ? CB[id].name : id); }).join(";"));
     return f.map(function(x){ return String(x == null ? "" : x).replace(/[|\r\n\t]+/g, " "); }).join("|");
   }
@@ -1325,7 +1336,7 @@ td.num{text-align:center}
       resEl.innerHTML = '<p class="muted">Loading…</p>';
       unsub = db.collection("responses").onSnapshot(function(snap){
         var all = snap.docs.filter(function(d){ return d.exists; }).map(function(d){ return Object.assign({_id:d.id}, d.data()); });
-        RESP = all.filter(function(x){ return x.v === 5 && x.ratings && x.ratings.sa; }); OLD = all.length - RESP.length; renderResults();
+        RESP = all.filter(function(x){ return x.v === 6 && x.ratings && x.ratings.sa; }); OLD = all.length - RESP.length; renderResults();
       }, function(){ resEl.innerHTML = '<p class="err">Could not load responses. Reload to try again.</p>'; unsub = null; });
     }
   });
@@ -1344,10 +1355,10 @@ td.num{text-align:center}
         var snap = await db.doc("responses/" + uid).get();
         if (snap.exists && !had) {
           var o = snap.data();
-          if (o && o.v === 5 && o.ratings && o.ratings.sa && CB[o.cat]) {
+          if (o && o.v === 6 && o.ratings && o.ratings.sa && CB[o.cat]) {
             S.exp = EXP.indexOf(o.exp); if (S.exp < 0) S.exp = null;
             S.sector = (o.sectors || String(o.sector || "").split("; ")).map(function(x){ return SECTOR.indexOf(x); }).filter(function(i){ return i >= 0; });
-            S.cat = o.cat; S.docId = uid;
+            S.cat = o.cat; S.variant = o.variant || null; S.docId = uid;
             S.ratings = JSON.parse(JSON.stringify({sa:o.ratings.sa || {}, cp:o.ratings.cp || {}, ch:o.ratings.ch || {}})); S.skip = {cp:!!(o.parts && o.parts.cp && o.parts.cp.skipped), ch:!!(o.parts && o.parts.ch && o.parts.ch.skipped)}; var w1 = wOf(o, "sa"), w2 = wOf(o, "cp"), w3 = wOf(o, "ch"); S.weights = {sa:Object.assign({}, w1 || {}), cp:Object.assign({}, w2 || {}), ch:Object.assign({}, w3 || {})}; S.rankDone = {sa:!!w1, cp:!!w2, ch:!!w3}; S.consent = true; S.consentAt = o.consent ? o.consent.at : null; S.comment = o.comment || "";
             S.done = {saved:true, code:encode(o), at:o.submittedAt}; S.step = "review"; persist();
           }
