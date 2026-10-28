@@ -625,6 +625,22 @@ td.num{text-align:center}
       try { f.submit(); } catch (e) { finish(false); }
     });
   }
+  // One readable record per response, "|"-separated in a fixed column order (see TABLE_HEADER), so the
+  // Google Sheet can spread it into columns with one formula: =SPLIT(cell, "|", TRUE, FALSE)
+  var TABLE_HEADER = ["format","submitted_at","response_id","reference","mode","experience","sector","technology","integration"]
+    .concat(RISKS.reduce(function(a, k){ return a.concat(["P1 " + k.name + " likelihood", "P1 " + k.name + " impact"]); }, []))
+    .concat(RISKS.reduce(function(a, k){ return a.concat(["P2 " + k.name + " likelihood", "P2 " + k.name + " impact"]); }, []))
+    .concat(RISKS.map(function(k){ return "Importance " + k.name; })).concat(["comment"]);
+  function tableRow(o){
+    function li(v, j){ return Array.isArray(v) ? v[j] : v === "ns" ? "not sure" : ""; }
+    var f = ["R1", o.submittedAt, o.rid, o.ref || "", o.mode || "online", o.exp, o.sector, o.catName, o.integration ? o.integration.name : ""];
+    RISKS.forEach(function(k){ var v = o.ratings.sa[k.id]; f.push(li(v, 0), li(v, 1)); });
+    RISKS.forEach(function(k){ var v = o.integration ? o.ratings.int[k.id] : null; f.push(li(v, 0), li(v, 1)); });
+    RISKS.forEach(function(k){ f.push(o.weights ? o.weights[k.id] : ""); });
+    f.push(o.comment || "");
+    return f.map(function(x){ return String(x == null ? "" : x).replace(/[|\r\n\t]+/g, " "); }).join("|");
+  }
+  window.__tableHeader = TABLE_HEADER;
   var submitting = false;
   async function submit(){
     if (submitting) return; submitting = true;
@@ -640,8 +656,7 @@ td.num{text-align:center}
     if (saved) S.docId = id;
     var code = encode(data), via = saved ? "page" : null;
     if (!saved && FORM_ACTION) {
-      var tech = data.catName + (data.integration ? " + " + data.integration.name : "") + (data.ref ? " [" + data.ref + "]" : "");
-      saved = await postForm([[FORM_CODE, code], [FORM_TECH, tech.slice(0, 300)]]);
+      saved = await postForm([[FORM_CODE, code], [FORM_TECH, tableRow(data)]]);
       if (saved) via = "form";
     }
     S.done = {saved:saved, via:via, code:code, at:data.submittedAt};
