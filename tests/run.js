@@ -84,8 +84,11 @@ const P9 = (L, I) => Array(9).fill([L, I]);
   check(await p.$$eval('.kind', els => els.map(e => e.textContent).join(',')) === 'Co-location,Co-product', 'integration type labels shown');
   await p.keyboard.press('ArrowRight'); await sleep(60);
   check(await step(p) === 'int:TEC', 'ArrowRight presses Start on the intro');
-  check(await p.$$eval('.ghost-chip.sa', els => els.length) === 1, 'part 1 answer shown as SA marker');
-  await rateAll(p, 'int', [[3,3],[3,3],[3,2],[2,4],[4,3],[3,3],[2,3],[2,2],[4,4]]);
+  check(await p.$$eval('#app .cell span', els => els.length) === 0, 'part 2 grid shows no part 1 or other-risk labels');
+  await p.click('.cell[data-l="3"][data-i="3"]'); await sleep(330);
+  check(await step(p) === 'int:RES', 'part 2 advances to second risk');
+  check(await p.$$eval('#app .cell span', els => els.length) === 0, 'next risk grid shows no labels from earlier risks');
+  for (const v of [[3,3],[3,2],[2,4],[4,3],[3,3],[2,3],[2,2],[4,4]]) { await p.click(`.cell[data-l="${v[0]}"][data-i="${v[1]}"]`); await sleep(330); }
   check(await step(p) === 'rank', 'last question after part 2');
   await p.click('.info[data-i="CUR"]'); await sleep(30);
   check(await p.isVisible('#d-CUR'), 'info opens definition');

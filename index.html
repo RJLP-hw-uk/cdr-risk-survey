@@ -111,9 +111,6 @@ button{font:inherit;color:inherit}
 .cell.low{background:var(--h-low)}.cell.mid{background:var(--h-mid)}.cell.high{background:var(--h-high)}
 .cell:hover{border-color:var(--ink-2)}
 .cell.picked{border:2px solid var(--ink)}
-.ghost-chip{font-size:.6rem;font-weight:700;padding:0 3px;border-radius:3px;border:1px solid var(--ink-2);color:var(--ink-2);line-height:1.4}
-.ghost-chip.sa{border-style:dashed}
-.ghost-chip.more{border-color:transparent}
 .cell.picked .pick{font-size:.66rem;font-weight:700;padding:1px 4px;border-radius:3px;background:var(--chip);color:var(--chip-ink);line-height:1.3}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
 
@@ -486,7 +483,7 @@ td.num{text-align:center}
     app.innerHTML = '<div class="card"><span class="tag part">Part 2 · Integrated</span>' +
       '<div class="intro"><h2>' + esc(ii.name) + '</h2><p>' + esc(ii.d) + '</p></div>' +
       '<div class="kinds">' + (ii.kind || []).map(function(k){ return '<span class="kind">' + esc(k) + '</span>'; }).join("") + '</div>' +
-      '<p class="muted small">Rate the same nine risks for this version. Your part 1 answer shows as a dashed SA box.</p>' +
+      '<p class="muted small">Rate the same nine risks for this version.</p>' +
       '</div>' + nav(true, "Start");
     bindNav();
   }
@@ -494,18 +491,14 @@ td.num{text-align:center}
   function renderRisk(scn, rid){
     var k = RB[rid];
     if (!k || (scn === "int" && !hasInt()) || !S.ratings[scn]) { S.step = "q1"; render(); return; }
-    var r = S.ratings[scn], cur = r[rid], ri = RISKS.indexOf(k), sa = S.ratings.sa[rid];
+    var r = S.ratings[scn], cur = r[rid], ri = RISKS.indexOf(k);
     var cells = "";
     for (var L = 5; L >= 1; L--) {
       cells += '<div class="ylab"><span><b>' + L + '</b> ' + LIK[L-1] + '</span></div>';
       for (var I = 1; I <= 5; I++) {
         var here = Array.isArray(cur) && cur[0] === L && cur[1] === I;
-        var others = RISKS.filter(function(o){ var v = r[o.id]; return o.id !== rid && Array.isArray(v) && v[0] === L && v[1] === I; });
-        var saHere = scn === "int" && Array.isArray(sa) && sa[0] === L && sa[1] === I;
-        cells += '<button type="button" class="cell ' + sev(L, I) + (here ? " picked" : "") + '" data-l="' + L + '" data-i="' + I + '" aria-label="Likelihood ' + L + ' ' + LIK[L-1] + ', impact ' + I + ' ' + IMP[I-1][0] + (saHere ? ', your part 1 answer' : '') + '" aria-pressed="' + here + '">' +
-          (here ? '<span class="pick">' + rid + '</span>' : '') + (saHere ? '<span class="ghost-chip sa" aria-hidden="true">SA</span>' : '') +
-          others.slice(0, (here || saHere) ? 1 : 2).map(function(o){ return '<span class="ghost-chip" aria-hidden="true">' + o.id + '</span>'; }).join("") +
-          (others.length > ((here || saHere) ? 1 : 2) ? '<span class="ghost-chip more" aria-hidden="true">+' + (others.length - ((here || saHere) ? 1 : 2)) + '</span>' : '') + '</button>';
+        cells += '<button type="button" class="cell ' + sev(L, I) + (here ? " picked" : "") + '" data-l="' + L + '" data-i="' + I + '" aria-label="Likelihood ' + L + ' ' + LIK[L-1] + ', impact ' + I + ' ' + IMP[I-1][0] + '" aria-pressed="' + here + '">' +
+          (here ? '<span class="pick">' + rid + '</span>' : '') + '</button>';
       }
     }
     cells += '<div></div>' + IMP.map(function(x, i){ return '<div class="xlab"><b>' + (i+1) + '</b><span>' + x[0] + '</span><span>' + x[1] + '</span></div>'; }).join("");
