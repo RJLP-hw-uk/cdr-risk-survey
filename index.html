@@ -108,6 +108,10 @@ button{font:inherit;color:inherit}
 .err{color:var(--warn);font-size:.9rem;min-height:1.2em}
 .status{font-size:.9rem;color:var(--ink-2)}
 .intro{border-left:3px solid var(--accent);padding:6px 0 6px 12px;display:grid;gap:4px}
+.intro .theme{font-family:var(--f-display);font-weight:700;font-size:1.15rem;line-height:1.25}
+.whatnext{display:grid;gap:8px}
+body.introPage header.mast h1{font-size:2.1rem}
+@media (max-width:480px){body.introPage header.mast h1{font-size:1.6rem}}
 
 /* risk screen */
 .dots{display:flex;flex-wrap:wrap;gap:4px}
@@ -776,6 +780,7 @@ td.num{text-align:center}
     var bar = document.getElementById("bar");
     bar.hidden = !!S.done;
     bar.firstChild.style.width = (S.done ? 100 : Math.round(100 * i / Math.max(1, st.length - 1))) + "%";
+    document.body.classList.toggle("introPage", !S.done && S.step === "intro");
     if (S.done) renderDone();
     else if (S.step === "intro") renderIntro();
     else if (S.step === "plan") renderPlan();
@@ -793,9 +798,15 @@ td.num{text-align:center}
   var NOTICE_VERSION = "2026-10-28c";
   function renderIntro(){
     app.innerHTML = '<div class="card"><span class="tag part">About this survey</span>' +
-      '<div class="intro"><h2>Why we are doing this</h2>' +
-      '<p>This survey started at the GHGT-18 conference. In a session on what holds back the scale-up of carbon dioxide removal (CDR), investment risk, real and perceived, came up as one of several significant barriers. A moment of scientific inspiration followed: could the co-benefits of CDR projects, such as co-products or shared sites, lower that risk and the cost of capital that comes with it?</p>' +
-      '<p>The idea was born here this week, so it seemed only right to bring the whole GHGT community into answering it. Your ratings are the data, and we will share what we find with you.</p></div>' +
+      '<div class="intro"><p class="theme">Can co-benefits lower the investment risk of carbon dioxide removal (CDR)?</p>' +
+      '<p>Co-products give a project revenue beyond removal credits. Co-hosting with existing infrastructure lets it share a site, inputs or permits. Both could reduce the risks investors price into CDR projects, and with them the cost of capital.</p></div>' +
+      '<div class="whatnext"><b>What you will do</b><ol class="steps2">' +
+        '<li><span class="n">1</span><span>Answer two short questions about your experience and where you work.</span></li>' +
+        '<li><span class="n">2</span><span>Optionally, rank the technologies by investment risk.</span></li>' +
+        '<li><span class="n">3</span><span>Pick the technology you know best. Rate nine investment risks for it as normally deployed, by how likely each is and how much revenue it could cost, then how important each risk is.</span></li>' +
+        '<li><span class="n">4</span><span>See one version of the same technology with a co-product or a co-host, and say whether each risk would be lower, the same or higher, then how important each is.</span></li>' +
+        '<li><span class="n">5</span><span>Submit. If you like, offer a short interview or ask for an early preprint.</span></li>' +
+      '</ol></div>' +
       '<dl class="facts">' +
         '<div><dt>Who we are</dt><dd>Dr Reinaldo Lee Pereira (Heriot-Watt University, UK) and Dr Mak Đukan (Forschungszentrum Jülich, Germany)</dd></div>' +
         '<div><dt>Time needed</dt><dd>8–15 minutes</dd></div>' +
