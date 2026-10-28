@@ -4,7 +4,7 @@ Browser tests for `index.html` (Playwright, Chromium). Both scripts serve the pa
 
 ```bash
 npm i -D playwright && npx playwright install chromium
-node tests/run.js      # click-through: consent page and privacy notice, technology list, 7 risk categories, baseline plus one variant (co-product or co-host; random assignment when a technology has both, incl. skipping the variant), importance per part, thank-you screen with interview offer, interview mode (#interview), Google Form payload, timing and contact row, email fallback, claude.ai editor/respondent storage (mocked)
+node tests/run.js      # click-through: consent page and privacy notice, technology list, 7 risk categories, baseline grids plus one variant (co-product or co-host; random assignment when a technology has both, incl. skipping the variant) rated on one comparison page of 7 sliders (much lower … much higher than the baseline, Not set until touched), importance per part, thank-you screen with interview offer, interview mode (#interview), Google Form payload, timing and contact row, email fallback, claude.ai editor/respondent storage (mocked)
 node tests/visual.js   # fixed layout: Back/Next never move, grid squares stay one size per window, the page itself never scrolls (6 window sizes)
 ```
 
