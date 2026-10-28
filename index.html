@@ -108,7 +108,7 @@ button{font:inherit;color:inherit}
 .err{color:var(--warn);font-size:.9rem;min-height:1.2em}
 .status{font-size:.9rem;color:var(--ink-2)}
 .intro{border-left:3px solid var(--accent);padding:6px 0 6px 12px;display:grid;gap:4px}
-.intro .theme{font-family:var(--f-display);font-weight:700;font-size:1.15rem;line-height:1.25}
+.intro .theme{font-weight:700}
 .whatnext{display:grid;gap:8px}
 body.introPage header.mast h1{font-size:2.1rem}
 @media (max-width:480px){body.introPage header.mast h1{font-size:1.6rem}}
@@ -798,9 +798,9 @@ td.num{text-align:center}
   var NOTICE_VERSION = "2026-10-28c";
   function renderIntro(){
     app.innerHTML = '<div class="card"><span class="tag part">About this survey</span>' +
-      '<div class="intro"><p class="theme">Can co-benefits lower the investment risk of carbon dioxide removal (CDR)?</p>' +
+      '<div class="intro"><h2>Why we are doing this</h2><p class="theme">Can co-benefits lower the investment risk of carbon dioxide removal (CDR)?</p>' +
       '<p>Co-products give a project revenue beyond removal credits. Co-hosting with existing infrastructure lets it share a site, inputs or permits. Both could reduce the risks investors price into CDR projects, and with them the cost of capital.</p></div>' +
-      '<div class="whatnext"><b>What you will do</b><ol class="steps2">' +
+      '<div class="whatnext"><h2>What will happen</h2><ol class="steps2">' +
         '<li><span class="n">1</span><span>Answer two short questions about your experience and where you work.</span></li>' +
         '<li><span class="n">2</span><span>Optionally, rank the technologies by investment risk.</span></li>' +
         '<li><span class="n">3</span><span>Pick the technology you know best. Rate nine investment risks for it as normally deployed, by how likely each is and how much revenue it could cost, then how important each risk is.</span></li>' +
