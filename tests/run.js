@@ -19,7 +19,7 @@ let PAGE;
 const MOCK = require('fs').readFileSync(path.join(__dirname, 'mock.js'), 'utf8');
 const KEY = 'cdr-risk-survey-v7';
 const ORDER = ['TEC','PRI','POL','CUR','CON','CPT','PER','SOC','CER'];
-const TITLES = ['Technology risk','Price risk','Policy risk','Transport and storage risk','Cost risk','Counterparty risk','Regulatory risk','Acceptance risk','Certification risk'];
+const TITLES = ['Technology risk','Price risk','Policy risk','Supply chain risk','Cost risk','Counterparty risk','Regulatory risk','Acceptance risk','Certification risk'];
 let fails = 0, passes = 0;
 function check(c, msg){ if (c) { passes++; } else { fails++; console.log('  FAIL: ' + msg); } }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -155,7 +155,7 @@ async function riskScreenChecks(p, label){
   check(await step(p) === 'sa:TEC', 'lands on the baseline first risk');
   await riskScreenChecks(p, 'baseline');
   check((await p.$eval('.tag.part', e => e.textContent)) === 'Part 1 · DAC: solid sorbent', 'baseline label is the technology name');
-  check(await p.$$eval('.dot', d => d.map(x => x.textContent).join(',')) === 'TECH,PRICE,POL,T&S,COST,CPTY,REG,ACC,CERT', 'risk shortcuts in the agreed order');
+  check(await p.$$eval('.dot', d => d.map(x => x.textContent).join(',')) === 'TECH,PRICE,POL,SUPPLY,COST,CPTY,REG,ACC,CERT', 'risk shortcuts in the agreed order');
   await p.click('.cell[data-l="4"][data-i="3"]'); await sleep(330);
   check(await step(p) === 'sa:PRI', 'auto-advance after first rating');
   await p.click('#back'); await sleep(60);
@@ -165,7 +165,7 @@ async function riskScreenChecks(p, label){
   check(await step(p) === 'sa:TEC', 'changing an existing answer does not auto-advance');
   check(JSON.stringify((await state(p)).ratings.sa.TEC) === '[2,2]', 'changed answer stored');
   await p.click('.dot[data-r="CUR"]'); await sleep(60);
-  check(await step(p) === 'sa:CUR' && (await p.$eval('.qblock .tag', e => e.textContent)) === 'Transport and storage risk', 'risk shortcut jumps to transport and storage');
+  check(await step(p) === 'sa:CUR' && (await p.$eval('.qblock .tag', e => e.textContent)) === 'Supply chain risk', 'risk shortcut jumps to supply chain');
   for (let k = 0; k < 4; k++) await p.click('#back');
   await sleep(60);
   check(await step(p) === 'sa', 'Back from the first risk returns to the baseline card');
