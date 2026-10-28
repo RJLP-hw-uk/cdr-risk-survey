@@ -147,6 +147,13 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 mark{background:var(--h-mid);color:var(--ink);padding:0 2px;border-radius:2px}
 .fields{display:grid;gap:8px}
 .fields label{font-size:.86rem;font-weight:700;display:grid;gap:3px}
+.cmp{display:grid;gap:6px}
+.crow{display:grid;gap:3px;padding:7px 10px;border:1px solid var(--rule);border-radius:var(--r)}
+.crow .cl{font-size:.76rem;font-weight:700;color:var(--ink-2);letter-spacing:.02em}
+.crow .was,.crow .now{display:grid;grid-template-columns:4.6rem minmax(0,1fr);gap:8px;font-size:.9rem;line-height:1.35}
+.crow .was{color:var(--ink-2)}
+.crow .now{font-weight:700}
+.crow .was span,.crow .now span{font-size:.72rem;font-weight:700;color:var(--ink-2);padding-top:2px}
 .kinds{display:flex;flex-wrap:wrap;gap:6px}
 .kind{font-size:.76rem;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--ink)}
 .ref{display:grid;gap:4px}
@@ -204,234 +211,271 @@ td.num{text-align:center}
     soc:"residents or local groups object to the project",
     cer:"the certifier deducts, delays or refuses credits, or the removal cannot be measured accurately"
   };
+  // Each technology: a baseline (Part 1, as normally deployed) and, where it applies, a co-product version (cp)
+  // and/or a co-host version (ch). base/cp/ch rows: where = site and infrastructure, earns = revenue,
+  // owner = who builds and finances it. Model IDs refer to cdr-cost-of-capital; "new:" = case still to add.
+  var PB = "Project company, financed as a stand-alone project";
   var CATS = [
     {id:"dac_ss", group:"DAC", name:"DAC: solid sorbent", d:"sorbent filters, CO₂ released by heat", sa:"DAC_SS",
+      base:{d:"A solid-sorbent direct air capture plant on its own site, selling removal credits.",
+        where:"Own site with its own power and heat supply; CO₂ sent to a separate transport and storage operator",
+        earns:"Removal credits sold to buyers (offtake contracts or the voluntary market), plus tax credits such as 45Q where available",
+        owner:"DAC company, financed as a stand-alone project"},
       ex:{tec:"the sorbent captures less CO₂, degrades faster, or the plant uses more energy than designed",
-          res:"humidity and temperature at the site reduce capture, or storage takes less CO₂ than expected",
           pol:"a tax credit such as 45Q, a grant or an eligibility rule",
-          cur:"the certifier deducts or delays credits, or CO₂ transport and storage is not available",
+          cur:"the CO₂ pipeline or storage well is not ready when the plant starts, or the storage operator does not take the agreed CO₂",
           con:"contactors, sorbent, the storage connection or set-up cost more than planned",
           cpt:"a credit buyer cancels an offtake agreement",
           per:"a CO₂ storage or pipeline permit",
-          soc:"residents object to the plant, its power demand or the CO₂ pipeline"},
-      int:{name:"DAC at a data centre", kind:["Co-location","Co-product"], d:"Runs on the data centre’s waste heat and sells it a cooling service.", model:"DAC_DC",
-        ex:{tec:"regenerating with low-temperature server heat captures less CO₂ than designed",
-            pri:", or the data centre pays less for the cooling service",
-            cur:"server downtime stops capture, or credits are deducted or delayed",
-            cpt:"the data-centre operator ends the heat agreement, or a credit buyer cancels",
+          soc:"residents object to the plant, its power demand or the CO₂ pipeline",
+          cer:"the certifier deducts or delays credits, for example over energy use or storage monitoring"},
+      cp:{name:"Solid-sorbent DAC selling recovered water", model:"new:DAC_SS_H2O",
+        d:"The same plant condenses the water the sorbent takes up from the air together with the CO₂, and sells it.",
+        earns:"Removal credits and tax credits as in the baseline, plus sales of recovered water to local industrial or municipal buyers",
+        same:"site, capture process, CO₂ storage and owner.",
+        ex:{tec:"the plant recovers less water than designed, or water recovery raises energy use",
+            pri:", or water sells for less than planned",
+            cpt:"a water buyer or a credit buyer pulls out",
+            per:"a water-supply or water-quality approval"}},
+      ch:{name:"DAC at a data centre", model:"DAC_DC",
+        d:"The same DAC units placed at a data centre, regenerated with its server waste heat and financed by the data-centre owner.",
+        where:"At a data centre, using its waste heat, power connection and site; CO₂ sent to a separate storage operator",
+        earns:"Removal credits and tax credits as in the baseline; the heat costs nothing and the data centre gains cooling",
+        owner:"Data-centre owner, on its own balance sheet",
+        same:"capture process and CO₂ storage.",
+        ex:{tec:"regenerating with low-temperature server heat captures less CO₂ than designed, or server downtime cuts the heat supply",
+            cur:"CO₂ transport from the data-centre site to storage is not available",
+            con:"fitting the DAC units into the data centre’s cooling system costs more than planned",
             soc:"residents object to the combined site’s power or water use"}}},
     {id:"dac_ls", group:"DAC", name:"DAC: liquid solvent", d:"solvent regenerated at high heat", sa:"DAC_LS",
+      base:{d:"A liquid-solvent direct air capture plant on its own site, selling removal credits.",
+        where:"Own site; CO₂ sent to a separate transport and storage operator",
+        earns:"Removal credits sold to buyers (offtake contracts or the voluntary market), plus tax credits such as 45Q where available",
+        owner:"DAC company, financed as a stand-alone project"},
       ex:{tec:"the solvent loop or calciner underperforms, or one failure stops the whole plant",
-          res:"hot, dry or cold conditions raise water and energy use or reduce capture",
           pol:"a tax credit such as 45Q, a grant or an eligibility rule",
-          cur:"the certifier deducts or delays credits, or CO₂ transport and storage is not available",
+          cur:"the CO₂ pipeline or storage well is not ready when the plant starts, or the storage operator does not take the agreed CO₂",
           con:"the large integrated plant, its calciner and storage wells cost more than planned",
           cpt:"a credit buyer cancels an offtake agreement",
           per:"a CO₂ storage well or water permit",
-          soc:"residents object to the large industrial site or its water use"}, int:null},
-    {id:"dac_oth", group:"DAC", name:"DAC: others", d:"e.g. electrochemical, mineral looping, moisture swing", sa:"DAC_EC",
-      ex:{tec:"electrodes, membranes or the capture material wear out or capture less than designed",
-          res:"site conditions reduce capture, or storage takes less CO₂ than expected",
-          pol:"a tax credit such as 45Q, a grant or an eligibility rule",
-          cur:"the certifier deducts or delays credits, or CO₂ transport and storage is not available",
-          con:"first-of-a-kind units and set-up cost more than planned",
-          cpt:"a credit buyer cancels an offtake agreement",
-          per:"a CO₂ storage or pipeline permit",
-          soc:"residents object to the plant or its power demand"}, int:null},
+          soc:"residents object to the large industrial site or its water use",
+          cer:"the certifier deducts or delays credits, for example over energy use or storage monitoring"},
+      ch:{name:"DAC at an oil and gas company’s storage site", model:"new:DAC_LS_OG",
+        d:"The same plant built by an oil and gas company next to its own CO₂ storage wells and financed on its balance sheet.",
+        where:"On the company’s land, next to its own CO₂ storage wells and pipelines",
+        earns:"Removal credits and tax credits as in the baseline; no fee paid to a storage operator",
+        owner:"Oil and gas company, on its own balance sheet",
+        same:"capture process.",
+        ex:{cur:"the company’s storage wells take less CO₂ than planned",
+            cpt:"the company changes strategy and stops funding the plant, or a credit buyer cancels",
+            soc:"groups object to an oil and gas company selling removal credits"}}},
     {id:"beccs", group:"Biomass", name:"BECCS", d:"bioenergy with capture and storage", sa:"BIO_SA",
-      ex:{tec:"the capture unit on biomass flue gas captures less, or its solvent degrades faster",
-          res:"biomass supply or quality varies, or storage takes less CO₂ than expected",
-          pri:", or electricity and heat sell for less",
-          pol:"a removal credit, bioenergy subsidy or biomass sustainability rule",
-          cur:"sustainability rules disqualify tonnes, or CO₂ transport and storage is not available",
-          con:"the capture unit, biomass handling and storage connection cost more than planned",
-          cpt:"a credit buyer or biomass supplier pulls out",
+      base:{d:"A biomass power plant with a capture unit, built, owned and financed by the power company itself (as planned at Drax).",
+        where:"The company’s own biomass power plant; CO₂ piped or shipped to geological storage",
+        earns:"Electricity sales (for example under a contract for difference), plus removal credits for the CO₂ stored",
+        owner:"Power company, on its own balance sheet"},
+      ex:{tec:"the capture unit on the flue gas captures less, its solvent degrades faster, or it cuts power output more than designed",
+          pri:", or electricity sells for less",
+          pol:"a removal credit, power contract, bioenergy subsidy or biomass sustainability rule",
+          cur:"the CO₂ pipeline, shipping route or storage site is not ready, or the storage operator does not take the agreed CO₂",
+          con:"the capture unit and storage connection cost more than planned",
+          cpt:"a credit buyer, power buyer or biomass supplier pulls out",
           per:"a CO₂ storage, pipeline or emissions permit",
-          soc:"local groups oppose the biomass sourcing or the CO₂ pipeline"},
-      int:{name:"BECCS at an ethanol plant", kind:["Co-location","Co-product"], d:"Captures the near-pure CO₂ the ethanol plant already releases, so the plant can sell lower-carbon fuel.", model:"BECCS_ETOH",
-        ex:{tec:"compressing and drying the fermentation CO₂ underperforms",
-            pri:", or the ethanol plant earns less",
-            cur:"the ethanol plant stops running, or credits are deducted or delayed",
-            cpt:"the ethanol plant owner closes or ends the agreement, or a credit buyer cancels"}}},
+          soc:"local groups oppose the biomass sourcing or the CO₂ pipeline",
+          cer:"sustainability rules disqualify some biomass, or the certifier deducts or delays credits"},
+      cp:{name:"BECCS at a biomethane plant", model:"new:BECCS_BM",
+        d:"A biogas plant upgrades biogas to biomethane for the gas grid; the CO₂ separated in upgrading is captured, liquefied and shipped to geological storage. The plant owner runs it (as at BioCirc in Denmark).",
+        where:"The company’s own biogas plant; CO₂ trucked and shipped to offshore storage",
+        earns:"Biomethane sales to the gas grid (with renewable-gas support), plus removal credits for the CO₂ stored",
+        same:"owner and finance (the plant company) and geological storage.",
+        note:"The energy product changes from electricity to biomethane, and the CO₂ comes already separated from biogas upgrading rather than from flue gas.",
+        ex:{tec:"the CO₂ cleaning and liquefaction unit underperforms or breaks down",
+            pri:", or biomethane sells for less",
+            pol:"a removal credit, biomethane subsidy or feedstock sustainability rule",
+            cur:"trucks, the port terminal, the ship or the storage site are not available, or their operator does not take the agreed CO₂",
+            con:"liquefaction, on-site tanks and the logistics contracts cost more than planned",
+            cpt:"a credit buyer, biomethane buyer or feedstock supplier pulls out",
+            per:"a permit for the liquefaction unit or for CO₂ storage",
+            soc:"residents object to the biogas plant, its smell or the extra truck traffic",
+            cer:"methane leaks or feedstock rules reduce the credited tonnes, or the certifier deducts or delays credits"}}},
     {id:"biochar", group:"Biomass", name:"Biochar", d:"charred biomass stored in soil", sa:"BC_SA",
+      base:{d:"A pyrolysis plant buys crop or forestry residues, makes biochar and applies it to soil; its surplus heat is not used.",
+        where:"Own industrial site; residues trucked in",
+        earns:"Removal credits only",
+        owner:"Biochar company, financed as a stand-alone project"},
       ex:{tec:"the pyrolysis unit produces less biochar or breaks down more often",
-          res:"the carbon in the biochar is less stable, or the feedstock varies more than planned",
-          pri:", or biochar and energy sell for less",
-          pol:"a removal credit or rule on what counts as durable storage",
-          cur:"the certifier discounts tonnes for durability, or the end use cannot be tracked",
+          pol:"a removal credit or a rule on what counts as durable storage",
+          cur:"the biochar cannot be delivered to or applied at the end-use site as planned",
           con:"the pyrolysis plant and feedstock handling cost more than planned",
-          cpt:"a credit buyer, biochar buyer or feedstock supplier pulls out",
+          cpt:"a credit buyer or feedstock supplier pulls out",
           per:"an emissions or waste-handling permit",
-          soc:"neighbours object to smoke, smell or truck traffic"},
-      int:{name:"Biochar at a wastewater plant", kind:["Co-location","Co-product"], d:"Turns the plant’s sewage sludge into biochar on site, saving the plant the cost of disposing of the sludge.", model:"BC_WWTP",
-        ex:{res:"the sludge yields less stable carbon than expected",
-            pri:", or the avoided sludge-disposal cost is lower",
-            cpt:"the water utility ends the agreement, or a credit buyer cancels",
-            per:"a permit to treat sewage sludge"}}},
-    {id:"biooil", group:"Biomass", name:"Bio-oil injection", d:"biomass oil injected underground", sa:"BO_SA",
-      ex:{tec:"the pyrolysis unit yields less oil or breaks down more often",
-          res:"the oil holds less carbon than expected, or the well takes less oil",
-          pri:", or by-products such as biochar sell for less",
-          pol:"a removal credit or a rule on underground injection",
-          cur:"the certifier deducts or delays credits, or the injection well is unavailable",
-          con:"pyrolysis units, transport and well access cost more than planned",
-          cpt:"a credit buyer or biomass supplier pulls out",
-          per:"an underground injection permit",
-          soc:"residents object to truck traffic or the injection site"},
-      int:{name:"Bio-oil from sawmill waste", kind:["Existing market","Co-location"], d:"Buys waste wood from sawmills and injects the oil into wells that already have permits.", model:"BO_WELL",
-        ex:{pri:", or the sawmill pays less to get rid of its residues",
-            cpt:"the sawmill stops supplying residues, or a credit buyer cancels",
-            per:"an amendment to the existing well permit"}}},
-    {id:"erw", group:"Rock", name:"Enhanced rock weathering", d:"crushed rock spread on farmland", sa:"ERW_CR",
+          soc:"neighbours object to smoke, smell or truck traffic",
+          cer:"the certifier discounts tonnes for durability, or the end use cannot be tracked"},
+      cp:{name:"Biochar plant selling heat", model:"new:BC_HEAT",
+        d:"The same plant burns its pyrolysis gas and sells the heat to a district heating network (as in Stockholm and Tampere).",
+        where:"Own industrial site next to a district heating network; residues trucked in",
+        earns:"Removal credits, plus heat sold to the district heating company",
+        same:"feedstock, pyrolysis process, biochar end use and owner.",
+        ex:{pri:", or the heating company pays less for heat",
+            cur:"the district heating network cannot take the heat in summer, or the biochar cannot be delivered as planned",
+            con:"the heat connection to the network costs more than planned",
+            cpt:"the heating company or a credit buyer pulls out"}},
+      ch:{name:"Biochar at a wastewater plant", model:"BC_WWTP",
+        d:"A pyrolysis unit inside a wastewater treatment plant turns the plant’s sewage sludge into biochar; the water utility owns it.",
+        where:"Inside an operating wastewater treatment plant, sharing its site, sludge drying, staff and permit",
+        earns:"Removal credits, plus the sludge-disposal cost the utility avoids",
+        owner:"Water utility, on its own balance sheet",
+        same:"pyrolysis process and char end use.",
+        note:"The feedstock changes from residues to sewage sludge.",
+        ex:{tec:"the pyrolysis unit handles wet sludge worse than designed",
+            pri:", or the avoided sludge-disposal cost is lower than expected",
+            con:"fitting the unit into the existing plant costs more than planned",
+            cpt:"a credit buyer cancels",
+            per:"an amendment to the plant’s environmental permit",
+            soc:"residents object to emissions from the treatment site",
+            cer:"the certifier discounts sludge biochar for durability or contaminants"}}},
+    {id:"erw", group:"Rock", name:"Enhanced rock weathering", d:"crushed rock spread on farmland", sa:"ERW_AG",
+      base:{d:"Crushed basalt spread on farmland; farmers gain yield and liming benefits.",
+        where:"Farmland, using farm-supply channels and spreading contractors",
+        earns:"Removal credits; farmers may pay part of the rock cost in return for the yield benefit",
+        owner:"Rock-weathering company"},
       ex:{tec:"crushing, transport or spreading costs more or works less well than planned",
-          res:"the rock dissolves more slowly, or the removal cannot be measured accurately",
           pri:", or farmers pay less for the rock",
           pol:"a removal credit or rule on soil amendments",
-          cur:"the certifier deducts or delays credits because removal is hard to measure",
+          cur:"rock cannot be hauled or spread on time, or a haulage or spreading contractor does not deliver",
           con:"quarry access, crushing and soil monitoring cost more than planned",
           cpt:"a credit buyer, quarry or farmer pulls out",
           per:"a quarrying or soil-application permit",
-          soc:"farmers or neighbours worry about dust or metals in the soil"},
-      int:{name:"Rock weathering sold to farmers", kind:["Co-product","Existing market"], d:"Sells the rock to farmers as a soil improver through farm-supply channels, so they share the cost in return for better yields.", model:"ERW_AG",
-        ex:{pri:", or crop-yield gains are smaller than farmers expect",
-            cpt:"farmers stop buying the rock, or a credit buyer cancels"}}},
+          soc:"farmers or neighbours worry about dust or metals in the soil",
+          cer:"removal is hard to measure in soil, so the certifier deducts or delays credits"}},
     {id:"cew", group:"Ocean", name:"OAE: coastal enhanced weathering", d:"olivine sand on beaches", sa:"CEW_SA",
+      base:{d:"A developer buys olivine sand and places it on a beach or nearshore, paid only by removal credits.",
+        where:"Coastal site, using the developer’s own contractors and marine permit",
+        earns:"Removal credits only",
+        owner:"Developer, financed as a stand-alone project"},
       ex:{tec:"placement equipment or the olivine supply performs worse than planned",
-          res:"olivine dissolves more slowly in the sea, or the removal cannot be measured accurately",
           pol:"a removal credit or a marine rule such as the London Protocol",
-          cur:"the certifier deducts or delays credits because removal at sea is hard to measure",
+          cur:"olivine cannot be shipped or placed on time, or the shipping or placement contractor does not deliver",
           con:"olivine mining, shipping and placement cost more than planned",
           cpt:"a credit buyer or the olivine supplier pulls out",
           per:"a marine placement permit",
-          soc:"residents or beach users object, for example over nickel or sand colour"},
-      int:{name:"Coastal weathering in beach nourishment", kind:["Co-product","Existing market"], d:"Mixes olivine into the sand that councils already buy and place to rebuild beaches.", model:"CEW_BN",
-        ex:{pri:", or councils pay less for the sand",
+          soc:"residents or beach users object, for example over nickel or sand colour",
+          cer:"removal at sea is hard to measure, so the certifier deducts or delays credits"},
+      ch:{name:"Coastal weathering hosted by a beach-nourishment programme", model:"CEW_BN",
+        d:"A council that already rebuilds its beaches with bought sand hosts the project: olivine replaces part of that sand and is placed by the council’s own contractors under the programme’s permit.",
+        where:"The council’s existing beach-nourishment programme: its contractors, dredging fleet, placement schedule and permit",
+        earns:"Removal credits, plus the council’s payment for the sand the olivine replaces",
+        owner:"Developer supplies the olivine; the council pays for placement as part of its programme",
+        same:"olivine, amount placed and how removal is measured.",
+        ex:{pri:", or the council pays less for the sand",
+            cur:"the nourishment programme is delayed or skips a year",
             cpt:"the council or beach programme drops olivine, or a credit buyer cancels",
             per:"approval to add olivine to the beach-fill permit"}}},
-    {id:"oae_ec", group:"Ocean", name:"OAE: electrochemical", d:"seawater split into acid and alkali", sa:"OAE_SA",
+    {id:"oae_ec", group:"Ocean", name:"OAE: electrochemical", d:"seawater split into acid and alkali", sa:"new:OAE_SA_NEUT",
+      base:{d:"An electrochemical plant on its own coastal site splits seawater into acid and alkali and returns the alkali to the sea.",
+        where:"Own coastal site with its own intake, outfall and power connection",
+        earns:"Removal credits only; the acid is neutralised at a cost",
+        owner:"Project company, financed as a stand-alone project"},
       ex:{tec:"electrolysis stacks or membranes underperform or wear out",
-          res:"seawater takes up less CO₂ than modelled, or the removal cannot be measured accurately",
-          pri:", or by-products such as acid or hydrogen sell for less",
           pol:"a removal credit or a marine rule on adding substances to the sea",
-          cur:"the certifier deducts or delays credits because ocean uptake is hard to verify",
+          cur:"the outfall or discharge route is unavailable, so alkalinity cannot be released",
           con:"the electrochemical plant, intake and outfall cost more than planned",
-          cpt:"a credit buyer or by-product buyer pulls out",
+          cpt:"a credit buyer pulls out",
           per:"a discharge permit",
-          soc:"fishers, residents or environmental groups oppose the discharge"},
-      int:{name:"Electrochemical OAE at a desalination plant", kind:["Co-location","Co-product"], d:"Treats the desalination plant’s leftover brine using its intake, outfall and power, and gives back acid and extra fresh water.", model:"OAE_DS",
-        ex:{cur:"the desalination plant stops, which halts alkalinity production",
-            con:"the treatment unit and connection to the existing intake cost more than planned",
-            cpt:"the desalination operator ends the agreement, or a credit buyer cancels"}}},
+          soc:"fishers, residents or environmental groups oppose the discharge",
+          cer:"ocean uptake is hard to verify, so the certifier deducts or delays credits"},
+      cp:{name:"Electrochemical OAE selling its acid", model:"OAE_SA",
+        d:"The same plant sells the hydrochloric acid to industrial buyers instead of neutralising it.",
+        earns:"Removal credits, plus hydrochloric acid sold to industrial buyers",
+        same:"site, process, owner and alkalinity released to sea.",
+        ex:{pri:", or the acid sells for less than planned",
+            cpt:"an acid buyer or a credit buyer pulls out",
+            per:"a discharge permit, or a permit to store and ship hydrochloric acid"}},
+      ch:{name:"Electrochemical OAE at a desalination plant", model:"OAE_DS",
+        d:"The same module inside an operating desalination plant, treating its leftover brine with the plant’s intake, outfall and power; the water authority finances it.",
+        where:"Operating desalination plant: its intake, outfall, power connection and discharge permit",
+        earns:"Removal credits; the desalination plant uses the acid instead of buying it",
+        owner:"Water authority, on its own balance sheet",
+        same:"electrochemical process, alkalinity released to sea and measurement.",
+        note:"The module treats brine instead of fresh seawater.",
+        ex:{tec:"treating brine instead of seawater lowers performance or wears the stacks faster",
+            cur:"the desalination plant’s outfall is unavailable, so alkalinity cannot be released",
+            con:"the module and its connection to the existing intake cost more than planned",
+            cpt:"the desalination operator stops the plant or ends the agreement, or a credit buyer cancels"}}},
     {id:"oae_min", group:"Ocean", name:"OAE: mineral alkalinity", d:"e.g. lime or Mg(OH)₂ added to seawater", sa:"MOAE_SA",
+      base:{d:"Magnesium hydroxide dosed into the sea through a purpose-built outfall.",
+        where:"New dosing plant and outfall, with its own discharge permit",
+        earns:"Removal credits only",
+        owner:"Project company, financed as a stand-alone project"},
       ex:{tec:"dosing equipment or the mineral supply performs worse than planned",
-          res:"seawater takes up less CO₂ than modelled, or the removal cannot be measured accurately",
           pol:"a removal credit or a marine rule on adding substances to the sea",
-          cur:"the certifier deducts or delays credits because ocean uptake is hard to verify",
+          cur:"the outfall is unavailable, or the mineral cannot be delivered on time",
           con:"the mineral supply, dosing plant and new outfall cost more than planned",
           cpt:"a credit buyer or the mineral supplier pulls out",
           per:"a discharge permit for the new outfall",
-          soc:"fishers, residents or environmental groups oppose the discharge"},
-      int:{name:"Mineral alkalinity at a wastewater outfall", kind:["Co-location"], d:"Adds alkalinity to treated wastewater that already flows to sea, using the water utility’s outfall and permit.", model:"MOAE_WW",
-        ex:{cur:"the wastewater plant cuts its flow, which limits dosing",
+          soc:"fishers, residents or environmental groups oppose the discharge",
+          cer:"ocean uptake is hard to verify, so the certifier deducts or delays credits"},
+      ch:{name:"Mineral alkalinity at a wastewater outfall", model:"MOAE_WW",
+        d:"The same mineral added to treated effluent at an operating wastewater plant and released through its outfall under the utility’s permit.",
+        where:"Operating wastewater plant: its outfall, effluent flow and discharge permit",
+        earns:"Removal credits only, as in the baseline",
+        owner:"Water utility, on its own balance sheet",
+        same:"mineral, dose and measurement.",
+        ex:{cur:"the wastewater outfall is unavailable or carries less flow, which limits dosing",
             con:"the dosing unit at the existing outfall costs more than planned",
             cpt:"the water utility ends the agreement, or a credit buyer cancels",
             per:"approval to add alkalinity under the existing discharge permit"}}},
-    {id:"ccs_pow", group:"CCS", name:"CCS: power generation", d:"capture at a gas or coal power plant", sa:null,
-      q:{res:"Less CO₂ is captured and stored than planned", cur:"Captured CO₂ cannot be stored or credited"},
-      ex:{tec:"the capture plant captures less CO₂ or uses more of the plant’s power than designed",
-          res:"the storage site takes less CO₂ or injects more slowly than expected",
-          pri:", or carbon or electricity prices fall",
+    {id:"ccs_pow", group:"CCS", name:"CCS: power generation", d:"capture at a gas power plant", sa:"CCS_NG_SA",
+      base:{d:"A power company fits a capture unit to its own gas power plant, finances it itself (as RWE or SSE plan) and sends the CO₂ to geological storage.",
+        where:"The company’s own gas power plant; CO₂ piped to a saline storage site",
+        earns:"Electricity sales, plus avoided carbon costs or payments per tonne stored (emissions trading, a tax credit such as 45Q, or a government contract)",
+        owner:"Power company, on its own balance sheet"},
+      ex:{tec:"the capture unit captures less CO₂ or uses more of the plant’s power than designed",
+          pri:", or electricity or carbon prices fall",
           pol:"a carbon price, tax credit or subsidy contract",
-          cur:"the power plant runs fewer hours, or transport and storage is unavailable",
+          cur:"the storage site takes less CO₂ or injects more slowly than expected, or the pipeline is unavailable",
           con:"the capture unit, compression and pipeline connection cost more than planned",
-          cpt:"the power buyer or storage operator fails to perform",
+          cpt:"a power buyer or the storage operator fails to perform",
           per:"a storage licence or pipeline permit",
-          soc:"residents object to the pipeline or the storage site"}, int:null},
-    {id:"ccs_ind", group:"CCS", name:"CCS: industry", d:"e.g. cement, steel, chemicals", sa:null,
-      q:{res:"Less CO₂ is captured and stored than planned", cur:"Captured CO₂ cannot be stored or credited"},
-      ex:{tec:"the capture plant captures less CO₂ or uses more energy than designed",
-          res:"the storage site takes less CO₂ or injects more slowly than expected",
+          soc:"residents object to the pipeline or the storage site",
+          cer:"stored CO₂ is not credited or counted under the carbon pricing scheme"},
+      cp:{name:"Power-plant CCS selling CO₂ for oil recovery", model:"CCS_NG_EOR",
+        d:"The same plant sells its CO₂ to a nearby oil field, which stores it while producing more oil.",
+        where:"The company’s own gas power plant; CO₂ piped to a nearby oil field",
+        earns:"Electricity sales and payments per tonne stored, plus CO₂ sales to the oil-field operator",
+        same:"capture unit, owner and finance.",
+        ex:{pri:", or oil prices fall and the field pays less for CO₂",
+            cur:"the oil field takes less CO₂ than agreed, or the pipeline is unavailable",
+            cpt:"the oil-field operator stops buying CO₂, or a power buyer pulls out",
+            soc:"groups object to using captured CO₂ to produce more oil",
+            cer:"stored tonnes are not credited, for example under rules on oil recovery"}}},
+    {id:"ccs_ind", group:"CCS", name:"CCS: industry", d:"capture at an industrial plant; here a cement works", sa:"CCS_CEM_CL",
+      base:{d:"A cement company fits a capture unit to its own cement works, finances it itself and sends the CO₂ to geological storage.",
+        where:"The company’s own cement works; CO₂ piped or shipped to geological storage",
+        earns:"Cement sales, plus avoided carbon costs or payments per tonne stored (emissions trading or a government contract)",
+        owner:"Cement company, on its own balance sheet"},
+      ex:{tec:"the capture unit captures less CO₂ or uses more energy than designed",
           pri:", or carbon prices under a trading scheme fall",
           pol:"a carbon price, tax credit or subsidy contract",
-          cur:"the plant produces less, or transport and storage is unavailable",
+          cur:"the storage site takes less CO₂ or injects more slowly than expected, or the pipeline is unavailable",
           con:"the capture unit, compression and pipeline connection cost more than planned",
-          cpt:"the plant owner or storage operator fails to perform",
+          cpt:"a cement buyer or the storage operator fails to perform",
           per:"a storage licence or pipeline permit",
-          soc:"residents object to the pipeline or the storage site"}, int:null},
-    {id:"ccs_h2", group:"CCS", name:"CCS: hydrogen production", d:"capture at a gas-based hydrogen plant", sa:null,
-      q:{res:"Less CO₂ is captured and stored than planned", cur:"Captured CO₂ cannot be stored or credited"},
-      ex:{tec:"the capture unit captures less CO₂ than designed",
-          res:"the storage site takes less CO₂ or injects more slowly than expected",
-          pri:", or hydrogen prices fall",
-          pol:"a hydrogen subsidy, carbon price or tax credit",
-          cur:"the hydrogen plant runs less, or transport and storage is unavailable",
-          con:"the capture unit, compression and pipeline connection cost more than planned",
-          cpt:"the hydrogen buyer or storage operator fails to perform",
-          per:"a storage licence or pipeline permit",
-          soc:"residents object to the pipeline or the storage site"}, int:null},
-    {id:"ccs_eor", group:"CCS", name:"CCS: enhanced oil recovery", d:"CO₂ injected to produce more oil", sa:null,
-      q:{res:"Less CO₂ is captured and stored than planned", cur:"Captured CO₂ cannot be stored or credited"},
-      ex:{tec:"the capture unit captures less CO₂ than designed",
-          res:"less of the injected CO₂ stays in the oil field than planned",
-          pri:", or oil prices fall and the field buys less CO₂",
-          pol:"a tax credit such as 45Q, or a rule on crediting CO₂ stored through oil recovery",
-          cur:"the oil field takes less CO₂, or stored tonnes are not credited",
-          con:"the capture unit, compression and pipeline to the oil field cost more than planned",
-          cpt:"the oil-field operator stops buying CO₂",
-          per:"an injection or pipeline permit",
-          soc:"groups object to using captured CO₂ to produce more oil"}, int:null}
+          soc:"residents object to the pipeline or the storage site",
+          cer:"stored CO₂ is not credited or counted under the carbon pricing scheme"},
+      cp:{name:"Industrial CCS selling CO₂ into concrete", model:"new:CCS_CEM_CONC",
+        d:"Part of the captured CO₂ is sold to concrete producers, who mineralise it permanently in concrete or supplementary cementitious materials.",
+        earns:"Cement sales and payments per tonne stored, plus CO₂ sales to concrete producers",
+        same:"capture unit, owner and finance, and geological storage for the rest of the CO₂.",
+        ex:{pri:", or concrete producers pay less for CO₂",
+            cur:"concrete producers take less CO₂ than agreed, or the pipeline to storage is unavailable",
+            cpt:"a concrete producer stops buying CO₂, or the storage operator fails to perform",
+            cer:"CO₂ mineralised in concrete is not credited the same way as geological storage"}}}
   ];
   // Order and names as agreed with co-authors (28 Oct 2026). "Removal estimate" is dropped (overlaps with technology);
   // "Curtailed tonnes" becomes transport and storage. CER (certification) is a proposed ninth category for the
   // crediting part that the old removal-estimate and curtailment questions covered.
 
-  // Examples for transport and storage (cur) and certification (cer); removal-estimate (res) examples dropped.
-  (function(){
-    var X = {
-      dac_ss:{cur:"the CO₂ pipeline or storage well is not ready when the plant starts, or the storage operator does not take the agreed CO₂",
-              cer:"the certifier deducts or delays credits, for example over energy use or storage monitoring",
-              int:{tec:"regenerating with low-temperature server heat captures less CO₂ than designed, or server downtime cuts the heat supply",
-                   cur:"CO₂ transport from the data-centre site to storage is not available", cer:"credits are deducted or delayed"}},
-      dac_ls:{cur:"the CO₂ pipeline or storage well is not ready, or the storage operator does not take the agreed CO₂",
-              cer:"the certifier deducts or delays credits, for example over energy use or storage monitoring"},
-      dac_oth:{cur:"the CO₂ pipeline or storage well is not ready, or the storage operator does not take the agreed CO₂",
-               cer:"the certifier deducts or delays credits, for example over energy use or storage monitoring"},
-      beccs:{cur:"the CO₂ pipeline, shipping route or storage site is not ready, or the storage operator does not take the agreed CO₂",
-             cer:"sustainability rules disqualify some biomass, or the certifier deducts or delays credits",
-             int:{cur:"the CO₂ pipeline from the ethanol plant to storage is not available",
-                  cer:"credits are deducted, for example over double counting with low-carbon fuel credits"}},
-      biochar:{cur:"the biochar cannot be delivered to or applied at the end-use site as planned",
-               cer:"the certifier discounts tonnes for durability, or the end use cannot be tracked",
-               int:{cer:"the certifier discounts sludge biochar for durability or contaminants"}},
-      biooil:{cur:"the injection well is unavailable, or the well operator does not take the agreed bio-oil",
-              cer:"the certifier deducts or delays credits, for example over the carbon content of the oil"},
-      erw:{cur:"rock cannot be hauled or spread on time, or a haulage or spreading contractor does not deliver",
-           cer:"removal is hard to measure in soil, so the certifier deducts or delays credits"},
-      cew:{cur:"olivine cannot be shipped or placed on time, or the shipping or placement contractor does not deliver",
-           cer:"removal at sea is hard to measure, so the certifier deducts or delays credits"},
-      oae_ec:{cur:"the outfall or discharge route is unavailable, so alkalinity cannot be released",
-              cer:"ocean uptake is hard to verify, so the certifier deducts or delays credits",
-              int:{cur:"the desalination plant’s outfall is unavailable, so alkalinity cannot be released",
-                   cpt:"the desalination operator stops the plant or ends the agreement, or a credit buyer cancels"}},
-      oae_min:{cur:"the outfall is unavailable, or the mineral cannot be delivered on time",
-               cer:"ocean uptake is hard to verify, so the certifier deducts or delays credits",
-               int:{cur:"the wastewater outfall is unavailable or carries less flow, which limits dosing"}},
-      ccs_pow:{cur:"the storage site takes less CO₂ or injects more slowly than expected, or the pipeline is unavailable",
-               cer:"stored CO₂ is not credited or counted under the carbon pricing scheme"},
-      ccs_ind:{cur:"the storage site takes less CO₂ or injects more slowly than expected, or the pipeline is unavailable",
-               cer:"stored CO₂ is not credited or counted under the carbon pricing scheme"},
-      ccs_h2:{cur:"the storage site takes less CO₂ or injects more slowly than expected, or the pipeline is unavailable",
-              cer:"stored CO₂ is not credited or counted under the carbon pricing scheme"},
-      ccs_eor:{cur:"the oil field takes less CO₂ than agreed, or the pipeline is unavailable",
-               cer:"stored tonnes are not credited, for example under rules on oil recovery"}
-    };
-    CATS.forEach(function(c){
-      var x = X[c.id] || {};
-      delete c.ex.res; if (x.cur) c.ex.cur = x.cur; if (x.cer) c.ex.cer = x.cer;
-      if (c.q) { delete c.q.res; delete c.q.cur; }
-      if (c.int && c.int.ex) { delete c.int.ex.res; if (x.int) Object.keys(x.int).forEach(function(k){ c.int.ex[k] = x.int[k]; }); }
-    });
-  })();
   var RISKS = [
     {id:"TEC", k:"tec", ab:"TECH", name:"Technology risk", q:"The technology performs worse than designed", def:"Once running, the equipment or process removes less CO₂, or costs more to operate, than designed."},
     {id:"PRI", k:"pri", ab:"PRICE", name:"Price risk", q:"Prices received are lower than planned", def:"The price received for each tonne of CO₂ removed, or for other products and services, is lower or less stable than planned."},
@@ -444,15 +488,15 @@ td.num{text-align:center}
     {id:"CER", k:"cer", ab:"CERT", name:"Certification risk", q:"Removed CO₂ cannot be fully credited", def:"The removal cannot be measured or verified to the certifier’s standard, so credits are deducted, delayed or refused."}
   ];
   var EXT = {
-    tec:function(x){ return "For example: " + x + "."; },
-    pri:function(x){ return "For example: credit prices fall or swing" + x + "."; },
-    pol:function(x){ return "For example: " + x + " is cut or changed part-way through the project."; },
-    cur:function(x){ return "For example: " + x + "."; },
-    con:function(x){ return "Capital and other spending before the first sales; for example, " + x + "."; },
-    cpt:function(x){ return "For example: " + x + "."; },
-    per:function(x){ return "For example: " + x + " is refused or delayed."; },
-    soc:function(x){ return "For example: " + x + "."; },
-    cer:function(x){ return "For example: " + x + "."; }
+    tec:function(x){ return "e.g., " + x + "."; },
+    pri:function(x){ return "e.g., credit prices fall or swing" + x + "."; },
+    pol:function(x){ return "e.g., " + x + " is cut or changed part-way through the project."; },
+    cur:function(x){ return "e.g., " + x + "."; },
+    con:function(x){ return "Capital and other spending before the first sales, e.g., " + x + "."; },
+    cpt:function(x){ return "e.g., " + x + "."; },
+    per:function(x){ return "e.g., " + x + " is refused or delayed."; },
+    soc:function(x){ return "e.g., " + x + "."; },
+    cer:function(x){ return "e.g., " + x + "."; }
   };
   var LIK = ["Rare","Unlikely","Possible","Likely","Almost certain"];
   var IMP = [["Negligible","<2%"],["Minor","2–5%"],["Moderate","5–15%"],["Major","15–35%"],["Severe",">35%"]];
@@ -462,11 +506,11 @@ td.num{text-align:center}
   var RB = {}; RISKS.forEach(function(k){ RB[k.id] = k; });
 
   // ---------------- state
-  var KEY = "cdr-risk-survey-v5";
-  function blank(){ return {step:"intro", consent:false, consentAt:null, exp:null, sector:null, cat:null, ratings:{sa:{}, int:{}}, weights:{sa:{}, int:{}}, rankDone:{sa:false, int:false}, comment:"", ref:"", docId:null, rid:null, done:null, contact:null,
+  var KEY = "cdr-risk-survey-v6";
+  function blank(){ return {step:"intro", consent:false, consentAt:null, exp:null, sector:null, cat:null, ratings:{sa:{}, cp:{}, ch:{}}, weights:{sa:{}, cp:{}, ch:{}}, rankDone:{sa:false, cp:false, ch:false}, skip:{cp:false, ch:false}, comment:"", ref:"", docId:null, rid:null, done:null, contact:null,
     startedAt:new Date().toISOString(), activeMs:0, stepMs:{}}; }
   function valid(p){
-    if (!p || typeof p !== "object" || !p.ratings || !p.ratings.sa || !p.ratings.int) return false;
+    if (!p || typeof p !== "object" || !p.ratings || !p.ratings.sa || !p.ratings.cp || !p.ratings.ch || !p.weights || !p.rankDone || !p.skip) return false;
     if (p.cat != null && !CB[p.cat]) return false;
     if (p.done && !p.cat) return false;
     return true;
@@ -502,20 +546,28 @@ td.num{text-align:center}
 
   function cat(){ return S.cat ? CB[S.cat] : null; }
   function catName(){ var c = cat(); return c ? c.name : ""; }
-  function intInfo(){ var c = cat(); return c ? c.int : null; }
-  function hasInt(){ return !!intInfo(); }
+  // Parts of the chosen technology: "sa" baseline, "cp" co-product, "ch" co-host (only those it has).
+  var PLAB = {sa:"Baseline", cp:"Co-product", ch:"Co-host"};
+  var ROWS = [["where","Site and infrastructure"],["earns","Revenue"],["owner","Owner and finance"]];
+  function partsOf(c){ return c ? ["sa"].concat(c.cp ? ["cp"] : [], c.ch ? ["ch"] : []) : ["sa"]; }
+  function multi(){ return partsOf(cat()).length > 1; }
+  function partNo(scn){ return partsOf(cat()).indexOf(scn) + 1; }
+  function partName(scn){ var c = cat(); return scn === "sa" ? catName() : (c && c[scn] ? c[scn].name : ""); }
+  function partTag(scn){ return (multi() ? 'Part ' + partNo(scn) + ' · ' : '') + PLAB[scn]; }
   function qText(k){ var c = cat(); return (c && c.q && c.q[k.k]) || k.q; }
   function example(scn, k){
     var c = cat(), base = (c && c.ex[k] != null) ? c.ex[k] : GENERIC[k];
-    if (scn === "int") { var ii = intInfo(); if (ii && ii.ex && ii.ex[k] != null) base = ii.ex[k]; }
+    if (scn !== "sa" && c && c[scn] && c[scn].ex && c[scn].ex[k] != null) base = c[scn].ex[k];
     return EXT[k](base);
   }
   function steps(){
     var a = ["intro","q1","q2","q3"];
     if (!S.cat) return a;
     a.push("plan");
-    RISKS.forEach(function(k){ a.push("sa:" + k.id); }); a.push("wsa");
-    if (hasInt()) { a.push("int"); RISKS.forEach(function(k){ a.push("int:" + k.id); }); a.push("wint"); }
+    partsOf(cat()).forEach(function(scn){
+      a.push(scn);
+      if (scn === "sa" || !S.skip[scn]) { RISKS.forEach(function(k){ a.push(scn + ":" + k.id); }); a.push("w" + scn); }
+    });
     a.push("review"); return a;
   }
   function count(scn){ var r = S.ratings[scn] || {}; return RISKS.filter(function(k){ return r[k.id]; }).length; }
@@ -546,12 +598,11 @@ td.num{text-align:center}
     if (S.done) renderDone();
     else if (S.step === "intro") renderIntro();
     else if (S.step === "plan") renderPlan();
-    else if (S.step === "wsa") renderRank("sa");
-    else if (S.step === "wint") renderRank("int");
+    else if (S.step === "sa" || S.step === "cp" || S.step === "ch") renderPartIntro(S.step);
+    else if (S.step === "wsa" || S.step === "wcp" || S.step === "wch") renderRank(S.step.slice(1));
     else if (S.step === "q1") renderChoice("How many years have you worked in carbon removal or a related field?", "exp", EXP);
     else if (S.step === "q2") renderChoice("Where do you work?", "sector", SECTOR);
     else if (S.step === "q3") renderCat();
-    else if (S.step === "int") renderIntIntro();
     else if (S.step === "review") renderReview();
     else { var parts = S.step.split(":"); renderRisk(parts[0], parts[1]); }
   }
@@ -577,16 +628,17 @@ td.num{text-align:center}
   }
 
   function renderPlan(){
-    var ii = intInfo(), nm = catName();
+    var c = cat(), ps = partsOf(c), nm = catName();
+    var DEF = {cp:'<b>Co-product</b><span>A second product or service the same project sells besides removal credits, e.g., water recovered by a DAC plant.</span>',
+               ch:'<b>Co-host</b><span>An existing facility or company the project is built into: it shares the host’s site, infrastructure, inputs or permits, and the host often owns and finances it, e.g., DAC at a data centre.</span>'};
     app.innerHTML = '<div class="card"><span class="tag part">What happens next</span>' +
-      '<div class="intro"><h2>' + esc(nm) + '</h2><p>' + (ii ? 'The survey has two parts.' : 'You will rate this technology.') + '</p></div>' +
-      '<ol class="steps2">' +
-        '<li><span class="n">1</span><span>You rate ' + RISKS.length + ' risks for ' + (ii ? 'a stand-alone ' : 'a ') + esc(nm) + ' project, then how much each risk matters.</span></li>' +
-        (ii ? '<li><span class="n">2</span><span>You rate the same risks for a hypothetical version of the same technology with co-benefits: <i>' + esc(ii.name.toLowerCase()) + '</i>.</span></li>' : '') +
-      '</ol>' +
-      (ii ? '<div class="def"><b>What we mean by co-benefits</b><span>Advantages a removal project gains when it is combined with another activity or business: for example sharing an existing plant’s site, infrastructure or permits, selling a second product or service, or being owned and financed by a host company.</span></div>' : '') +
-      '<p class="small"><b>How to answer:</b> on each screen, tap one square. Higher means the risk is more likely over the project’s life; further right means it would cost more of the project’s revenue if it happens. Use <i>Not sure</i> if you cannot judge it.</p>' +
-      '</div>' + nav(true, ii ? "Start part 1" : "Start");
+      '<div class="intro"><h2>' + esc(nm) + '</h2><p>' + (ps.length > 1 ? 'The survey has ' + ps.length + ' parts. Parts after the first are optional.' : 'You will rate this technology as it is normally deployed.') + '</p></div>' +
+      (ps.length > 1 ? '<ol class="steps2">' + ps.map(function(scn, i){
+        return '<li><span class="n">' + (i + 1) + '</span><span><b>' + PLAB[scn] + ':</b> ' + esc(scn === "sa" ? 'the technology as normally deployed.' : c[scn].name + '.') + '</span></li>';
+      }).join("") + '</ol>' : '') +
+      ps.filter(function(scn){ return DEF[scn]; }).map(function(scn){ return '<div class="def">' + DEF[scn] + '</div>'; }).join("") +
+      '<p class="small"><b>How to answer:</b> for each part, rate ' + RISKS.length + ' risks, then how much each matters. On each risk screen, tap one square: higher means the risk is more likely over the project’s life; further right means it would cost more of the project’s revenue if it happens. Use <i>Not sure</i> if you cannot judge it.</p>' +
+      '</div>' + nav(true, "Next");
     bindNav();
   }
 
@@ -595,7 +647,7 @@ td.num{text-align:center}
     '<a href="https://hw.ac.uk/about/professional-services/governance-and-legal-services/information-governance/protect-information/data-protection-overview/privacy-and-your-data-rights/privacy-notice-for-participants-in-academic-research-projects" target="_blank" rel="noopener">privacy notice for participants in academic research projects</a>.</p>' +
     '<h3>Who is responsible</h3><p>Heriot-Watt University (Edinburgh EH14 4AS, United Kingdom) and Forschungszentrum Jülich GmbH, Institute of Climate and Energy Systems – Jülich Systems Analysis (ICE-2) (Wilhelm-Johnen-Straße, 52428 Jülich, Germany) are joint controllers of your personal data (Article 26 GDPR and UK GDPR). The study is run by the Research Centre for Carbon Solutions, Heriot-Watt University (Dr Reinaldo Lee Pereira, ' + CONTACT + ') and the Institute of Climate and Energy Systems – Jülich Systems Analysis (ICE-2), Forschungszentrum Jülich (Dr Mak Đukan, ' + FZJ_CONTACT + ', +49 2461 61-9381). ' +
     'The two institutions have agreed how they share responsibility; the essence of this arrangement is available on request. You can contact either of us about any part of this notice.</p>' +
-    '<h3>What the study is for</h3><p>To estimate how experts judge the investment risks of carbon dioxide removal technologies, on their own and with co-benefits, and to use these judgements to estimate their cost of capital. Results will be published in a peer-reviewed journal and may be presented at conferences.</p>' +
+    '<h3>What the study is for</h3><p>To estimate how experts judge the investment risks of carbon dioxide removal and carbon capture technologies, as normally deployed and with a co-product or a co-host, and to use these judgements to estimate their cost of capital. Results will be published in a peer-reviewed journal and may be presented at conferences.</p>' +
     '<h3>What we collect</h3><ul><li>Your answers: years of experience (in bands), type of employer (in categories), the technology you chose, your risk ratings, how much each risk matters and any comment you write.</li>' +
     '<li>The time you started and submitted the survey, the time spent on each screen, a random response number and the time you gave consent.</li>' +
     '<li>Only if you offer an interview at the end of the survey: your name, organisation and email address.</li></ul>' +
@@ -648,25 +700,40 @@ td.num{text-align:center}
         return '<div class="opt"><input type="radio" name="cat" id="' + id + '" value="' + c.id + '"' + (S.cat === c.id ? " checked" : "") + '><label for="' + id + '"><span>' + esc(c.name) + '</span>' + (c.d ? '<small>' + esc(c.d) + '</small>' : '') + '</label></div>';
       }).join("") + '</div></div>' + nav(true, "Next", !!S.cat);
     app.querySelectorAll('input[name="cat"]').forEach(function(el){ el.addEventListener("change", function(){
-      if (S.cat && S.cat !== el.value) { S.ratings = {sa:{}, int:{}}; S.weights = {sa:{}, int:{}}; S.rankDone = {sa:false, int:false}; }
+      if (S.cat && S.cat !== el.value) { var b0 = blank(); S.ratings = b0.ratings; S.weights = b0.weights; S.rankDone = b0.rankDone; S.skip = b0.skip; }
       S.cat = el.value; persist(); document.getElementById("next").disabled = false;
     }); });
     bindNav();
   }
 
-  function renderIntIntro(){
-    var ii = intInfo();
-    app.innerHTML = '<div class="card"><span class="tag part">Part 2 · Integrated</span>' +
-      '<div class="intro"><h2>' + esc(ii.name) + '</h2><p>' + esc(ii.d) + '</p></div>' +
-      '<div class="kinds">' + (ii.kind || []).map(function(k){ return '<span class="kind">' + esc(k) + '</span>'; }).join("") + '</div>' +
-      '<p class="muted small">Rate the same nine risks for this version.</p>' +
-      '</div>' + nav(true, "Start");
-    bindNav();
+  function renderPartIntro(scn){
+    var c = cat(), b = c.base, v = scn === "sa" ? b : c[scn], n = partNo(scn);
+    var body;
+    if (scn === "sa") {
+      body = '<dl class="facts">' + ROWS.map(function(r){ return '<div><dt>' + esc(r[1]) + '</dt><dd>' + esc(b[r[0]]) + '</dd></div>'; }).join("") + '</dl>';
+    } else {
+      var changed = ROWS.filter(function(r){ return r[0] !== "earns" && v[r[0]] && v[r[0]] !== b[r[0]]; });
+      body = '<div class="cmp"><span class="tag">What changes from the baseline</span>' + changed.map(function(r){
+          return '<div class="crow"><div class="cl">' + esc(r[1]) + '</div><div class="was"><span>Baseline</span><div>' + esc(b[r[0]]) + '</div></div>' +
+            '<div class="now"><span>' + PLAB[scn] + '</span><div>' + esc(v[r[0]]) + '</div></div></div>';
+        }).join("") + '</div>' +
+        (v.note ? '<p class="small"><b>Note:</b> ' + esc(v.note) + '</p>' : '') +
+        '<div class="def"><b>Where the revenue comes from</b><span>' + esc(v.earns || b.earns) + '</span></div>' +
+        (v.same ? '<p class="small"><b>Same as the baseline:</b> ' + esc(v.same) + '</p>' : '');
+    }
+    app.innerHTML = '<div class="card"><span class="tag part">' + partTag(scn) + '</span>' +
+      '<div class="intro"><h2>' + esc(scn === "sa" ? catName() : v.name) + '</h2><p>' + esc(v.d) + '</p></div>' + body +
+      '<p class="muted small">Rate ' + RISKS.length + ' risks for this ' + (scn === "sa" ? 'design' : 'version') + '.</p>' +
+      (scn !== "sa" ? '<div class="row"><span></span><button class="linkbtn" id="pskip" type="button">Skip this part</button></div>' : '') +
+      '</div>' + nav(true, multi() ? "Start part " + n : "Start");
+    var sk = document.getElementById("pskip");
+    if (sk) sk.addEventListener("click", function(){ S.skip[scn] = true; S.ratings[scn] = {}; S.weights[scn] = {}; S.rankDone[scn] = false; persist(); go(1); });
+    bindNav(function(){ if (scn !== "sa") S.skip[scn] = false; persist(); go(1); });
   }
 
   function renderRisk(scn, rid){
     var k = RB[rid];
-    if (!k || (scn === "int" && !hasInt()) || !S.ratings[scn]) { S.step = "intro"; render(); return; }
+    if (!k || partsOf(cat()).indexOf(scn) < 0 || (scn !== "sa" && S.skip[scn]) || !S.ratings[scn]) { S.step = "intro"; render(); return; }
     var r = S.ratings[scn], cur = r[rid], ri = RISKS.indexOf(k);
     var cells = "";
     for (var L = 5; L >= 1; L--) {
@@ -679,7 +746,7 @@ td.num{text-align:center}
     }
     cells += '<div></div>' + IMP.map(function(x, i){ return '<div class="xlab"><b>' + (i+1) + '</b><span>' + x[0] + '</span><span>' + x[1] + '</span></div>'; }).join("");
     var dots = RISKS.map(function(o){ return '<button type="button" class="dot' + (r[o.id] ? " done" : "") + (o.id === rid ? " cur" : "") + '" data-r="' + o.id + '" title="' + esc(o.name) + '">' + o.ab + '</button>'; }).join("");
-    var part = scn === "sa" ? (hasInt() ? 'Part 1 · ' : '') + esc(catName()) : 'Part 2 · ' + esc(intInfo().name) + ' (with co-benefits)';
+    var part = (multi() ? 'Part ' + partNo(scn) + ' · ' : '') + esc(partName(scn));
     app.innerHTML =
       '<div class="card">' +
         '<div class="row"><span class="tag part">' + part + '</span><span class="tag">' + (ri + 1) + ' of ' + RISKS.length + '</span></div>' +
@@ -700,7 +767,7 @@ td.num{text-align:center}
   function readSliders(scn){ app.querySelectorAll('input[type=range][data-w]').forEach(function(el){ S.weights[scn][el.dataset.w] = +el.value; }); }
   function renderRank(scn){
     var W = S.weights[scn];
-    var subject = scn === "sa" ? (hasInt() ? 'a stand-alone ' : 'a ') + esc(catName()) + ' project' : 'the version with co-benefits (' + esc(intInfo().name.toLowerCase()) + ')';
+    var subject = scn === "sa" ? (multi() ? 'the baseline ' : 'a ') + esc(catName()) + ' project' : 'the ' + PLAB[scn].toLowerCase() + ' version (' + esc(partName(scn).toLowerCase()) + ')';
     var rows = RISKS.map(function(k){
       var v = W[k.id] || 5;
       return '<div class="wrow"><label class="wn" for="w-' + k.id + '">' + esc(k.name) + '</label>' +
@@ -709,7 +776,7 @@ td.num{text-align:center}
         '<button type="button" class="info" data-i="' + k.id + '" aria-expanded="false" aria-controls="d-' + k.id + '" aria-label="What ' + esc(k.name) + ' means">i</button>' +
         '<div class="wdef" id="d-' + k.id + '" hidden>' + esc(k.def) + '</div></div>';
     }).join("");
-    app.innerHTML = '<div class="card"><span class="tag part">' + (hasInt() ? (scn === "sa" ? 'Part 1 · ' : 'Part 2 · ') : '') + 'Importance</span>' +
+    app.innerHTML = '<div class="card"><span class="tag part">' + (multi() ? 'Part ' + partNo(scn) + ' · ' : '') + 'Importance</span>' +
       '<div style="display:grid;gap:4px"><h2>How much does each risk raise the cost of financing ' + subject + '?</h2><p class="muted small">1 = barely matters, 5 = moderately important, 10 = decisive. Tap <i>i</i> for a definition.</p></div>' +
       '<div class="wscale"><span></span><span><span>1</span><span class="mid">5</span><span>10</span></span><span></span><span></span></div>' +
       '<div class="wrows">' + rows + '</div>' +
@@ -728,21 +795,22 @@ td.num{text-align:center}
   }
 
   function partList(){
-    var rows = [{scn:"sa", label:catName()}, {scn:"wsa", label:"Part 1 importance"}];
-    if (hasInt()) rows.push({scn:"int", label:intInfo().name}, {scn:"wint", label:"Part 2 importance"});
+    var rows = [];
+    partsOf(cat()).forEach(function(scn){
+      rows.push({redo:scn, label:(multi() ? 'Part ' + partNo(scn) + ' · ' : '') + partName(scn), st: scn !== "sa" && S.skip[scn] ? "Skipped" : count(scn) + ' of ' + RISKS.length + ' rated'});
+      if (scn === "sa" || !S.skip[scn]) rows.push({redo:"w" + scn, label:(multi() ? 'Part ' + partNo(scn) + ' · ' : '') + 'Importance', st:S.rankDone[scn] ? "Scored 1–10" : "Skipped"});
+    });
     return '<div class="list">' + rows.map(function(x){
-      var w = x.scn === "wsa" ? "sa" : x.scn === "wint" ? "int" : null;
-      var st = w ? (S.rankDone[w] ? "Scored 1–10" : "Skipped") : count(x.scn) + ' of ' + RISKS.length + ' rated';
-      return '<div class="item"><div class="t"><b>' + esc(x.label) + '</b><span class="muted small">' + st + '</span></div>' +
-        '<button class="btn ghost sm" type="button" data-redo="' + x.scn + '">Redo</button></div>';
+      return '<div class="item"><div class="t"><b>' + esc(x.label) + '</b><span class="muted small">' + x.st + '</span></div>' +
+        '<button class="btn ghost sm" type="button" data-redo="' + x.redo + '">Redo</button></div>';
     }).join("") + '</div>';
   }
   function another(){ var keep = {exp:S.exp, sector:S.sector, consent:S.consent, consentAt:S.consentAt, ref:S.ref}; S = Object.assign(blank(), keep, {step:"q3"}); persist(); render(); toTop(); }
   function bindParts(){
     app.querySelectorAll("[data-redo]").forEach(function(b){ b.addEventListener("click", function(){
       var scn = b.dataset.redo; S.done = null;
-      if (scn === "wsa" || scn === "wint") { var w = scn === "wsa" ? "sa" : "int"; S.weights[w] = {}; S.rankDone[w] = false; S.step = scn; }
-      else { S.ratings[scn] = {}; S.step = scn === "int" ? "int" : "sa:" + RISKS[0].id; }
+      if (scn.charAt(0) === "w") { var w = scn.slice(1); S.weights[w] = {}; S.rankDone[w] = false; S.step = scn; }
+      else { S.ratings[scn] = {}; if (scn !== "sa") S.skip[scn] = false; S.step = scn; }
       persist(); render(); toTop();
     }); });
     var ev = document.getElementById("another"); if (ev) ev.addEventListener("click", another);
@@ -751,8 +819,7 @@ td.num{text-align:center}
   }
 
   function renderReview(){
-    var parts = ['Part 1: ' + count("sa") + ' of ' + RISKS.length + ' risks rated'];
-    if (hasInt()) parts.push('Part 2: ' + count("int") + ' of ' + RISKS.length + ' risks rated');
+    var parts = partsOf(cat()).map(function(scn){ return (multi() ? 'Part ' + partNo(scn) + ' (' + PLAB[scn].toLowerCase() + '): ' : '') + (scn !== "sa" && S.skip[scn] ? 'skipped' : count(scn) + ' of ' + RISKS.length + ' risks rated'); });
     app.innerHTML = '<div class="card"><span class="tag part">Last step</span><h2>Ready to submit</h2>' +
       '<p class="muted small">' + esc(catName()) + ' · ' + parts.join(' · ') + '. Use Back to change an answer.</p>' +
       (interviewer() ? '<div class="ref"><label for="ref">Respondent reference (optional, e.g. interview code)</label><input type="text" id="ref" maxlength="60" autocomplete="off"></div>' : '') +
@@ -765,13 +832,16 @@ td.num{text-align:center}
   }
 
   function payload(){
-    var c = cat(), ii = intInfo();
+    var c = cat(), ps = partsOf(c);
+    function part(scn){ return c[scn] ? {name:c[scn].name, model:c[scn].model || null, skipped:!!S.skip[scn]} : null; }
+    function rat(scn){ return ps.indexOf(scn) >= 0 && !(scn !== "sa" && S.skip[scn]) ? Object.assign({}, S.ratings[scn]) : {}; }
+    function wt(scn){ return ps.indexOf(scn) >= 0 && S.rankDone[scn] && !(scn !== "sa" && S.skip[scn]) ? Object.assign({}, S.weights[scn]) : null; }
     tick();
-    var o = {v:4, submittedAt:new Date().toISOString(), consent:{given:!!S.consent, at:S.consentAt, notice:NOTICE_VERSION}, exp:EXP[S.exp], sector:SECTOR[S.sector],
+    var o = {v:5, submittedAt:new Date().toISOString(), consent:{given:!!S.consent, at:S.consentAt, notice:NOTICE_VERSION}, exp:EXP[S.exp], sector:SECTOR[S.sector],
       cat:S.cat, catName:catName(), modelStandalone:c.sa || null,
-      integration: ii ? {name:ii.name, model:ii.model || null} : null,
-      ratings:{sa:Object.assign({}, S.ratings.sa), int: ii ? Object.assign({}, S.ratings.int) : {}},
-      weights:{sa: S.rankDone.sa ? Object.assign({}, S.weights.sa) : null, int: (ii && S.rankDone.int) ? Object.assign({}, S.weights.int) : null},
+      parts:{cp:part("cp"), ch:part("ch")},
+      ratings:{sa:rat("sa"), cp:rat("cp"), ch:rat("ch")},
+      weights:{sa:wt("sa"), cp:wt("cp"), ch:wt("ch")},
       comment:(S.comment || "").slice(0, 2000)};
     o.timing = timing(o.submittedAt);
     if (!S.rid) S.rid = "r-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8);
@@ -783,7 +853,7 @@ td.num{text-align:center}
   function decode(code){
     var s = String(code).replace(/\s+/g, ""); if (s.indexOf("CDRRISK2.") !== 0) throw new Error("Not an answer code for this survey version.");
     var bin = atob(s.slice(9)), b = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i);
-    var o = JSON.parse(new TextDecoder().decode(b)); if (!o || (o.v !== 2 && o.v !== 3 && o.v !== 4) || !o.ratings || !o.ratings.sa) throw new Error("Incomplete answer code.");
+    var o = JSON.parse(new TextDecoder().decode(b)); if (!o || [2,3,4,5].indexOf(o.v) < 0 || !o.ratings || !o.ratings.sa) throw new Error("Incomplete answer code.");
     return o;
   }
   // Google Forms refuses background (fetch) posts from other sites, so answers are sent as an ordinary form
@@ -804,20 +874,22 @@ td.num{text-align:center}
   }
   // One readable record per response, "|"-separated in a fixed column order (see TABLE_HEADER), so the
   // Google Sheet can spread it into columns with one formula: =SPLIT(cell, "|", TRUE, FALSE)
-  var TABLE_HEADER = ["format","submitted_at","response_id","reference","mode","experience","sector","technology","integration"]
-    .concat(RISKS.reduce(function(a, k){ return a.concat(["P1 " + k.name + " likelihood", "P1 " + k.name + " impact"]); }, []))
-    .concat(RISKS.reduce(function(a, k){ return a.concat(["P2 " + k.name + " likelihood", "P2 " + k.name + " impact"]); }, []))
-    .concat(RISKS.map(function(k){ return "P1 importance " + k.name; })).concat(RISKS.map(function(k){ return "P2 importance " + k.name; })).concat(["consent_at","comment","started_at","total_seconds","active_seconds","seconds_per_screen"]);
-  // Importance weights: v3 stores {sa:{...}, int:{...}}; v2 stored one set for the stand-alone part.
-  function wOf(o, scn){ var w = o.weights; if (!w) return null; if ("sa" in w || "int" in w) return w[scn] || null; return scn === "sa" ? w : null; }
+  var TPRE = {sa:"BL", cp:"CP", ch:"CH"};
+  var TABLE_HEADER = ["format","submitted_at","response_id","reference","mode","experience","sector","technology","co_product_version","co_host_version"]
+    .concat(["sa","cp","ch"].reduce(function(a, scn){ return a.concat(RISKS.reduce(function(b, k){ return b.concat([TPRE[scn] + " " + k.name + " likelihood", TPRE[scn] + " " + k.name + " impact"]); }, [])); }, []))
+    .concat(["sa","cp","ch"].reduce(function(a, scn){ return a.concat(RISKS.map(function(k){ return TPRE[scn] + " importance " + k.name; })); }, []))
+    .concat(["consent_at","comment","started_at","total_seconds","active_seconds","seconds_per_screen"]);
+  // Importance weights: v5 {sa,cp,ch}; v3/v4 {sa,int}; v2 one set for the stand-alone part.
+  function wOf(o, scn){ var w = o.weights; if (!w) return null; if ("sa" in w || "int" in w || "cp" in w || "ch" in w) return w[scn] || null; return scn === "sa" ? w : null; }
   function tableRow(o){
     function li(v, j){ return Array.isArray(v) ? v[j] : v === "ns" ? "not sure" : ""; }
-    var f = ["R3", o.submittedAt, o.rid, o.ref || "", o.mode || "online", o.exp, o.sector, o.catName, o.integration ? o.integration.name : ""];
-    RISKS.forEach(function(k){ var v = o.ratings.sa[k.id]; f.push(li(v, 0), li(v, 1)); });
-    RISKS.forEach(function(k){ var v = o.integration ? o.ratings.int[k.id] : null; f.push(li(v, 0), li(v, 1)); });
-    ["sa","int"].forEach(function(w){ var W = wOf(o, w); RISKS.forEach(function(k){ f.push(W ? W[k.id] : ""); }); });
+    var pt = o.parts || {};
+    var f = ["R4", o.submittedAt, o.rid, o.ref || "", o.mode || "online", o.exp, o.sector, o.catName,
+      pt.cp ? pt.cp.name + (pt.cp.skipped ? " (skipped)" : "") : "", pt.ch ? pt.ch.name + (pt.ch.skipped ? " (skipped)" : "") : ""];
+    ["sa","cp","ch"].forEach(function(scn){ var r = o.ratings[scn] || {}; RISKS.forEach(function(k){ var v = r[k.id]; f.push(li(v, 0), li(v, 1)); }); });
+    ["sa","cp","ch"].forEach(function(scn){ var W = wOf(o, scn); RISKS.forEach(function(k){ f.push(W ? W[k.id] : ""); }); });
     f.push(o.consent ? o.consent.at : ""); f.push(o.comment || "");
-    var tm = o.timing || {};   // R3: completion time appended after the R2 columns, so R2 column positions are unchanged
+    var tm = o.timing || {};
     f.push(tm.startedAt || "", tm.totalS == null ? "" : tm.totalS, tm.activeS == null ? "" : tm.activeS,
       Object.keys(tm.steps || {}).map(function(k){ return k + "=" + tm.steps[k]; }).join(";"));
     return f.map(function(x){ return String(x == null ? "" : x).replace(/[|\r\n\t]+/g, " "); }).join("|");
@@ -953,22 +1025,21 @@ td.num{text-align:center}
     list.forEach(function(x){ var v = x.ratings && x.ratings[scn] && x.ratings[scn][rid]; if (Array.isArray(v)) { Ls.push(v[0]); Is.push(v[1]); } else if (v === "ns") ns++; });
     return Ls.length ? f1(median(Ls)) + '/' + f1(median(Is)) + ' <span class="muted">(' + Ls.length + (ns ? '+' + ns + '?' : '') + ')</span>' : (ns ? '<span class="muted">' + ns + '?</span>' : '–');
   }
+  var PARTNAME = {sa:"baseline", int:"integrated (v3)", cp:"co-product", ch:"co-host"};
+  function partInfo(x, scn){ if (scn === "sa") return {name:"", model:x.modelStandalone}; if (scn === "int") return x.integration || {}; return (x.parts && x.parts[scn]) || {}; }
   function csvText(){
     var q = function(s){ s = s == null ? "" : String(s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
-    var lines = ["response_id,source,respondent_ref,submitted_at,experience,sector,category,technology_name,part,integration,model_case,risk,likelihood,impact,not_sure,importance_1_10,comment"];
+    var lines = ["response_id,source,respondent_ref,submitted_at,experience,sector,category,technology_name,part,version,model_case,risk,likelihood,impact,not_sure,importance_1_10,comment"];
     RESP.forEach(function(x){
-      ["sa","int"].forEach(function(scn){
-        var rr = (x.ratings && x.ratings[scn]) || {};
+      ["sa","int","cp","ch"].forEach(function(scn){
+        var rr = (x.ratings && x.ratings[scn]) || {}, pi = partInfo(x, scn);
         RISKS.forEach(function(k){ var v = rr[k.id]; if (!v) return;
-          lines.push([x._id, x.source, x.ref, x.submittedAt, x.exp, x.sector, x.cat, x.catName, scn === "sa" ? "standalone" : "integrated",
-            scn === "int" && x.integration ? x.integration.name : "", scn === "sa" ? x.modelStandalone : (x.integration && x.integration.model),
+          lines.push([x._id, x.source, x.ref, x.submittedAt, x.exp, x.sector, x.cat, x.catName, PARTNAME[scn], pi.name, pi.model,
             k.id, Array.isArray(v) ? v[0] : "", Array.isArray(v) ? v[1] : "", v === "ns" ? 1 : 0, "", x.comment].map(q).join(","));
         });
-      });
-      ["sa","int"].forEach(function(w){ var W = wOf(x, w); if (W) RISKS.forEach(function(k){
-        lines.push([x._id, x.source, x.ref, x.submittedAt, x.exp, x.sector, x.cat, x.catName, w === "sa" ? "importance standalone" : "importance integrated", "", "", k.id, "", "", "", +W[k.id] || "", x.comment].map(q).join(","));
-      }); });
-      if (false) RISKS.forEach(function(k){
+        var W = wOf(x, scn); if (W) RISKS.forEach(function(k){
+          lines.push([x._id, x.source, x.ref, x.submittedAt, x.exp, x.sector, x.cat, x.catName, "importance " + PARTNAME[scn], pi.name, pi.model, k.id, "", "", "", +W[k.id] || "", x.comment].map(q).join(","));
+        });
       });
     });
     return lines.join("\n");
@@ -980,9 +1051,11 @@ td.num{text-align:center}
     var body = "";
     CATS.forEach(function(c){
       var list = RESP.filter(function(x){ return x.cat === c.id; }); if (!list.length) return;
-      body += '<tr><td>' + esc(c.name) + '</td><td>Standalone</td><td class="num">' + list.length + '</td>' + RISKS.map(function(k){ return '<td class="num">' + cellFor(list, "sa", k.id) + '</td>'; }).join("") + '</tr>';
-      var li = list.filter(function(x){ return x.integration; });
-      if (li.length) body += '<tr><td class="muted">' + esc(c.int ? c.int.name : "Integrated") + '</td><td>Integrated</td><td class="num">' + li.length + '</td>' + RISKS.map(function(k){ return '<td class="num">' + cellFor(li, "int", k.id) + '</td>'; }).join("") + '</tr>';
+      body += '<tr><td>' + esc(c.name) + '</td><td>Baseline</td><td class="num">' + list.length + '</td>' + RISKS.map(function(k){ return '<td class="num">' + cellFor(list, "sa", k.id) + '</td>'; }).join("") + '</tr>';
+      ["cp","ch"].forEach(function(scn){
+        var lp = list.filter(function(x){ return x.ratings && x.ratings[scn] && Object.keys(x.ratings[scn]).length; });
+        if (lp.length) body += '<tr><td class="muted">' + esc(c[scn] ? c[scn].name : PLAB[scn]) + '</td><td>' + PLAB[scn] + '</td><td class="num">' + lp.length + '</td>' + RISKS.map(function(k){ return '<td class="num">' + cellFor(lp, scn, k.id) + '</td>'; }).join("") + '</tr>';
+      });
       var lw = list.filter(function(x){ return wOf(x, "sa"); });
       if (lw.length) body += '<tr><td class="muted">Importance (median, 1–10)</td><td>Importance</td><td class="num">' + lw.length + '</td>' + RISKS.map(function(k){ return '<td class="num">' + f1(median(lw.map(function(x){ return +wOf(x, "sa")[k.id]; }).filter(function(v){ return v > 0; }))) + '</td>'; }).join("") + '</tr>';
     });
@@ -1035,7 +1108,7 @@ td.num{text-align:center}
       resEl.innerHTML = '<p class="muted">Loading…</p>';
       unsub = db.collection("responses").onSnapshot(function(snap){
         var all = snap.docs.filter(function(d){ return d.exists; }).map(function(d){ return Object.assign({_id:d.id}, d.data()); });
-        RESP = all.filter(function(x){ return (x.v === 2 || x.v === 3 || x.v === 4) && x.ratings && x.ratings.sa; }); OLD = all.length - RESP.length; renderResults();
+        RESP = all.filter(function(x){ return x.v === 5 && x.ratings && x.ratings.sa; }); OLD = all.length - RESP.length; renderResults();
       }, function(){ resEl.innerHTML = '<p class="err">Could not load responses. Reload to try again.</p>'; unsub = null; });
     }
   });
@@ -1054,11 +1127,11 @@ td.num{text-align:center}
         var snap = await db.doc("responses/" + uid).get();
         if (snap.exists && !had) {
           var o = snap.data();
-          if (o && (o.v === 2 || o.v === 3 || o.v === 4) && o.ratings && o.ratings.sa && CB[o.cat]) {
+          if (o && o.v === 5 && o.ratings && o.ratings.sa && CB[o.cat]) {
             S.exp = EXP.indexOf(o.exp); if (S.exp < 0) S.exp = null;
             S.sector = SECTOR.indexOf(o.sector); if (S.sector < 0) S.sector = null;
             S.cat = o.cat; S.docId = uid;
-            S.ratings = JSON.parse(JSON.stringify({sa:o.ratings.sa || {}, int:o.ratings.int || {}})); var w1 = wOf(o, "sa"), w2 = wOf(o, "int"); S.weights = {sa:Object.assign({}, w1 || {}), int:Object.assign({}, w2 || {})}; S.rankDone = {sa:!!w1, int:!!w2}; S.consent = true; S.consentAt = o.consent ? o.consent.at : null; S.comment = o.comment || "";
+            S.ratings = JSON.parse(JSON.stringify({sa:o.ratings.sa || {}, cp:o.ratings.cp || {}, ch:o.ratings.ch || {}})); S.skip = {cp:!!(o.parts && o.parts.cp && o.parts.cp.skipped), ch:!!(o.parts && o.parts.ch && o.parts.ch.skipped)}; var w1 = wOf(o, "sa"), w2 = wOf(o, "cp"), w3 = wOf(o, "ch"); S.weights = {sa:Object.assign({}, w1 || {}), cp:Object.assign({}, w2 || {}), ch:Object.assign({}, w3 || {})}; S.rankDone = {sa:!!w1, cp:!!w2, ch:!!w3}; S.consent = true; S.consentAt = o.consent ? o.consent.at : null; S.comment = o.comment || "";
             S.done = {saved:true, code:encode(o), at:o.submittedAt}; S.step = "review"; persist();
           }
         }

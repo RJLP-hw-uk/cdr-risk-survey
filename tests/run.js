@@ -1,11 +1,23 @@
-// End-to-end click tests for the survey page (v5 flow) against a mocked claude.ai runtime.
-// Flow: intro + consent -> 3 background questions -> "what happens next" -> part 1 risks -> part 1 importance
-//       -> [part 2 intro -> part 2 risks -> part 2 importance] -> review -> thank-you screen (interview offer).
+// End-to-end click tests for the survey page (v6 flow) against a mocked claude.ai runtime.
+// Flow: intro + consent -> 3 background questions -> "what happens next" -> for each part of the chosen technology
+//       (baseline, then co-product and/or co-host where they exist): part card -> 9 risks -> importance
+//       -> review -> thank-you screen (interview offer). Parts after the first can be skipped on their card.
 const { chromium } = require('playwright');
 const path = require('path');
-const PAGE = 'file://' + path.resolve(__dirname, '..', 'index.html');
+// Serve the page over local http: with file:// URLs headless Chromium sometimes loses localStorage on reload.
+const http = require('http'), fs = require('fs');
+const ROOT = path.resolve(__dirname, '..');
+const server = http.createServer((req, res) => {
+  const rel = decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/, '') || 'index.html';
+  const file = path.join(ROOT, rel);
+  if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); return res.end(); }
+  res.writeHead(200, {'Content-Type': /\.html$/.test(file) ? 'text/html; charset=utf-8' : /\.js$/.test(file) ? 'text/javascript' : 'application/octet-stream'});
+  fs.createReadStream(file).pipe(res);
+});
+const listening = new Promise(r => server.listen(0, '127.0.0.1', () => r(server.address().port)));
+let PAGE;
 const MOCK = require('fs').readFileSync(path.join(__dirname, 'mock.js'), 'utf8');
-const KEY = 'cdr-risk-survey-v5';
+const KEY = 'cdr-risk-survey-v6';
 const ORDER = ['TEC','PRI','POL','CUR','CON','CPT','PER','SOC','CER'];
 const TITLES = ['Technology risk','Price risk','Policy risk','Transport and storage risk','Cost risk','Counterparty risk','Regulatory risk','Acceptance risk','Certification risk'];
 let fails = 0, passes = 0;
@@ -52,6 +64,7 @@ async function intro(p){
   check(!(await p.$eval('#next', b => b.disabled)), 'Start survey enabled after consent');
   await clickNext(p);
 }
+// From any start up to the first risk of the baseline (sa:TEC).
 async function about(p, exp, sector, cat){
   const s0 = await step(p);
   if (s0 === undefined || s0 === 'intro') await intro(p);
@@ -66,22 +79,28 @@ async function about(p, exp, sector, cat){
   await clickNext(p);
   check(await step(p) === 'plan', 'explanation screen after choosing a technology');
   await clickNext(p);
+  check(await step(p) === 'sa', 'baseline card after the explanation screen');
+  check((await appText(p)).includes('Revenue'), 'baseline card states the revenue');
+  await clickNext(p);
 }
 const P9 = (L, I) => Array(9).fill([L, I]);
 async function riskScreenChecks(p, label){
   const t = await p.$eval('.qblock .tag', e => e.textContent);
   check(TITLES.includes(t), label + ': risk title shown (' + t + ')');
+  const ex = await p.$eval('.qblock .muted', e => e.textContent);
+  check(/e\.g\., /.test(ex) && !/For example/.test(ex), label + ': example text written with "e.g.," (' + ex.slice(0, 40) + '…)');
   const txt = await appText(p);
   check(!/on its own/.test(txt), label + ': no "on its own" in the risk screen');
   check(!/revenue is lost/.test(txt), label + ': impact axis sentence removed');
 }
 
 (async () => {
+  PAGE = 'http://127.0.0.1:' + (await listening) + '/index.html';
   const browser = await chromium.launch();
   let s, st, ids;
 
-  // ---------- S0: intro page and privacy notice
-  console.log('S0 intro and privacy notice');
+  // ---------- S0: intro page, privacy notice and the technology list
+  console.log('S0 intro, privacy notice, technology list');
   let {ctx, page: p} = await newCtx(browser, 'none');
   check(await p.isVisible('#consent'), 'consent box on the first page');
   check((await appText(p)).includes('Heriot-Watt') && (await appText(p)).includes('minutes'), 'intro names the team and the time needed');
@@ -96,20 +115,21 @@ async function riskScreenChecks(p, label){
   check(!(await p.isVisible('#notice')), 'Close button closes the notice');
   await p.check('#consent'); await sleep(30);
   check(!!(await state(p)).consentAt, 'consent time recorded');
-  await p.uncheck('#consent'); await sleep(30);
-  check(await p.$eval('#next', b => b.disabled), 'unticking consent disables Start again');
+  await clickNext(p); await p.click('#exp1'); await sleep(300); await p.click('#sector1'); await sleep(300);
+  const ids0 = await p.$$eval('input[name="cat"]', e => e.map(x => x.value).join(','));
+  check(ids0 === 'dac_ss,dac_ls,beccs,biochar,erw,cew,oae_ec,oae_min,ccs_pow,ccs_ind', 'agreed technology list (' + ids0 + ')');
   check(p.errors.length === 0, 'no page errors on intro: ' + p.errors.join(' | '));
   await ctx.close();
 
-  // ---------- S1: editor interview, paired technology, navigation detours
-  console.log('S1 editor interview (DAC solid sorbent, paired)');
+  // ---------- S1: editor interview, three-part technology, navigation detours
+  console.log('S1 editor interview (DAC solid sorbent: baseline, co-product, co-host)');
   ({ctx, page: p} = await newCtx(browser, 'editor'));
   await sleep(150);
   check(await p.isVisible('#toggle-results'), 'Responses button visible to editor');
   await about(p, 1, 2, 'dac_ss');
-  check(await step(p) === 'sa:TEC', 'lands on part 1 first risk');
-  await riskScreenChecks(p, 'part 1');
-  check((await p.$eval('.tag.part', e => e.textContent)) === 'Part 1 · DAC: solid sorbent', 'part 1 label is the technology name');
+  check(await step(p) === 'sa:TEC', 'lands on the baseline first risk');
+  await riskScreenChecks(p, 'baseline');
+  check((await p.$eval('.tag.part', e => e.textContent)) === 'Part 1 · DAC: solid sorbent', 'baseline label is the technology name');
   check(await p.$$eval('.dot', d => d.map(x => x.textContent).join(',')) === 'TECH,PRICE,POL,T&S,COST,CPTY,REG,ACC,CERT', 'risk shortcuts in the agreed order');
   await p.click('.cell[data-l="4"][data-i="3"]'); await sleep(330);
   check(await step(p) === 'sa:PRI', 'auto-advance after first rating');
@@ -121,9 +141,13 @@ async function riskScreenChecks(p, label){
   check(JSON.stringify((await state(p)).ratings.sa.TEC) === '[2,2]', 'changed answer stored');
   await p.click('.dot[data-r="CUR"]'); await sleep(60);
   check(await step(p) === 'sa:CUR' && (await p.$eval('.qblock .tag', e => e.textContent)) === 'Transport and storage risk', 'risk shortcut jumps to transport and storage');
-  await p.click('#back'); await p.click('#back'); await p.click('#back'); await p.click('#back'); await sleep(60);
-  check(await step(p) === 'plan', 'Back from the first risk returns to the explanation screen');
-  check((await appText(p)).includes('What we mean by co-benefits'), 'explanation screen defines co-benefits');
+  for (let k = 0; k < 4; k++) await p.click('#back');
+  await sleep(60);
+  check(await step(p) === 'sa', 'Back from the first risk returns to the baseline card');
+  await p.click('#back'); await sleep(60);
+  check(await step(p) === 'plan', 'Back from the baseline card returns to the explanation screen');
+  const planTxt = await appText(p);
+  check(planTxt.includes('3 parts') && planTxt.includes('Co-product') && planTxt.includes('Co-host') && planTxt.includes('e.g., water'), 'explanation screen lists the parts and defines co-product and co-host');
   await ctx.close();
 
   // ---------- S1 (clean run): editor completes three interviews
@@ -131,22 +155,28 @@ async function riskScreenChecks(p, label){
   await sleep(150);
   await about(p, 1, 2, 'dac_ss');
   await rateAll(p, 'sa', [[4,3],[3,3],'ns',[2,4],[3,2],[4,4],[1,3],[2,2],[5,5]]);
-  check(await step(p) === 'wsa', 'part 1 importance after part 1 risks');
-  check((await h2(p)).includes('stand-alone DAC: solid sorbent'), 'part 1 importance names the stand-alone project');
+  check(await step(p) === 'wsa', 'baseline importance after baseline risks');
+  check((await h2(p)).includes('the baseline DAC: solid sorbent project'), 'baseline importance names the baseline project');
   check(await p.$$eval('.wn', e => e.map(x => x.textContent).join('|')) === TITLES.join('|'), 'importance rows use the risk titles');
   await p.fill('#w-TEC', '9'); await clickNext(p);
-  check(await step(p) === 'int', 'after part 1 importance the integration intro appears');
-  check((await h2(p)) === 'DAC at a data centre', 'integration title shown');
-  check(await p.$$eval('.kind', els => els.map(e => e.textContent).join(',')) === 'Co-location,Co-product', 'integration type labels shown');
+  check(await step(p) === 'cp', 'co-product card after baseline importance');
+  check((await h2(p)) === 'Solid-sorbent DAC selling recovered water', 'co-product title shown');
+  check((await appText(p)).includes('Where the revenue comes from') && (await appText(p)).includes('recovered water'), 'co-product card states the revenue');
+  check(await p.isVisible('#pskip'), 'co-product part can be skipped');
+  await clickNext(p);
+  check(await step(p) === 'cp:TEC', 'Start part 2 opens its first risk');
+  await riskScreenChecks(p, 'co-product');
+  check((await p.$eval('.tag.part', e => e.textContent)) === 'Part 2 · Solid-sorbent DAC selling recovered water', 'part 2 label');
+  await rateAll(p, 'cp', P9(3, 3));
+  check(await step(p) === 'wcp' && (await h2(p)).includes('co-product version'), 'co-product importance');
+  await clickNext(p);
+  check(await step(p) === 'ch' && (await h2(p)) === 'DAC at a data centre', 'co-host card');
+  check((await appText(p)).includes('What changes from the baseline') && (await appText(p)).includes('Data-centre owner'), 'co-host card lists what changes');
   await p.keyboard.press('ArrowRight'); await sleep(60);
-  check(await step(p) === 'int:TEC', 'ArrowRight presses Start on the intro');
-  await riskScreenChecks(p, 'part 2');
-  check(await p.$$eval('#app .cell span', els => els.length) === 0, 'part 2 grid shows no part 1 labels');
-  await p.click('.cell[data-l="3"][data-i="3"]'); await sleep(330);
-  check(await step(p) === 'int:PRI', 'part 2 advances to second risk');
-  for (const v of [[3,3],[3,2],[2,4],[4,3],[3,3],[2,3],[2,2],[4,4]]) { await p.click(`.cell[data-l="${v[0]}"][data-i="${v[1]}"]`); await sleep(330); }
-  check(await step(p) === 'wint', 'part 2 importance after part 2 risks');
-  check((await h2(p)).includes('co-benefits'), 'part 2 importance names the version with co-benefits');
+  check(await step(p) === 'ch:TEC', 'ArrowRight presses Start on the part card');
+  check(await p.$$eval('#app .cell span', els => els.length) === 0, 'part 3 grid shows no earlier labels');
+  for (const v of [[3,3],[3,3],[3,2],[2,4],[4,3],[3,3],[2,3],[2,2],[4,4]]) { await p.click(`.cell[data-l="${v[0]}"][data-i="${v[1]}"]`); await sleep(330); }
+  check(await step(p) === 'wch', 'co-host importance after co-host risks');
   await p.click('.info[data-i="CUR"]'); await sleep(30);
   check(await p.isVisible('#d-CUR'), 'info opens definition');
   await p.click('.info[data-i="TEC"]'); await sleep(30);
@@ -156,13 +186,14 @@ async function riskScreenChecks(p, label){
   await p.fill('#w-PRI', '2');
   check(await p.$eval('#wv-PRI', e => e.textContent) === '2', 'slider value label updates');
   await p.click('#back'); await sleep(60);
-  check(await step(p) === 'int:CER', 'Back from part 2 importance goes to last risk');
+  check(await step(p) === 'ch:CER', 'Back from importance goes to last risk');
   await clickNext(p);
   check(await p.$eval('#w-PRI', e => e.value) === '2', 'slider values kept after Back/Next');
   await p.focus('body'); await p.keyboard.press('ArrowRight'); await sleep(60);
   check(await step(p) === 'review', 'ArrowRight leaves the last importance question');
   s = await state(p);
-  check(s.rankDone.sa && s.rankDone.int && s.weights.sa.TEC === 9 && s.weights.int.PRI === 2 && s.weights.int.SOC === 5, 'both importance sets saved');
+  check(s.rankDone.sa && s.rankDone.cp && s.rankDone.ch && s.weights.sa.TEC === 9 && s.weights.ch.PRI === 2 && s.weights.cp.SOC === 5, 'three importance sets saved');
+  check((await appText(p)).includes('Part 3 (co-host): 9 of 9'), 'review summarises all parts');
   check(!(await p.$('#startover')) && !(await p.$('#change')) && !(await p.$('[data-redo]')), 'review has no Start over / Change technology / Redo buttons');
   check(await p.isVisible('#ref'), 'respondent reference field shown to editor');
   await p.fill('#ref', 'R1');
@@ -172,68 +203,71 @@ async function riskScreenChecks(p, label){
   ids = Object.keys(st).filter(k => k.startsWith('responses/int-'));
   check(ids.length === 1, 'double-click on Submit stores exactly one record (got ' + ids.length + ')');
   const d1 = st[ids[0]];
-  check(d1 && d1.v === 4 && d1.consent && d1.consent.given === true && d1.consent.at, 'record carries consent');
+  check(d1 && d1.v === 5 && d1.consent && d1.consent.given === true && d1.consent.at && d1.timing && d1.timing.activeS >= 0, 'record carries consent and timing');
   check(d1 && d1.ref === 'R1' && d1.mode === 'interview' && d1.source === 'interview', 'record carries reference and interview mode');
-  check(d1 && Object.keys(d1.ratings.sa).length === 9 && d1.ratings.sa.POL === 'ns' && Object.keys(d1.ratings.int).length === 9 && d1.ratings.sa.CER, 'record has 9 + 9 ratings with not-sure');
-  check(d1 && !('RES' in d1.ratings.sa), 'removal estimate no longer asked');
-  check(d1 && d1.weights.sa.TEC === 9 && d1.weights.int.PRI === 2 && d1.integration.model === 'DAC_DC' && d1.modelStandalone === 'DAC_SS', 'record has both importance sets and model links');
+  check(d1 && Object.keys(d1.ratings.sa).length === 9 && d1.ratings.sa.POL === 'ns' && Object.keys(d1.ratings.cp).length === 9 && Object.keys(d1.ratings.ch).length === 9, 'record has 9 + 9 + 9 ratings with not-sure');
+  check(d1 && d1.modelStandalone === 'DAC_SS' && d1.parts.cp.model === 'new:DAC_SS_H2O' && d1.parts.ch.model === 'DAC_DC' && !d1.parts.cp.skipped, 'record links each part to its model case');
+  check(d1 && d1.weights.sa.TEC === 9 && d1.weights.ch.PRI === 2 && d1.weights.cp.TEC === 5, 'record has three importance sets');
   check(d1 && d1.comment === 'test comment 1' && d1.exp === '2–5 years' && d1.sector === 'Academia or research', 'record has comment and background');
   check((await h2(p)) === 'Saved.', 'editor sees Saved.');
   check(await p.isVisible('#nextresp'), 'Start next response button shown');
-  await p.click('[data-redo="wint"]'); await sleep(60);
-  check(await step(p) === 'wint', 'Redo part 2 importance opens that question');
+  await p.click('[data-redo="wch"]'); await sleep(60);
+  check(await step(p) === 'wch', 'Redo part 3 importance opens that question');
   await p.fill('#w-SOC', '10'); await clickNext(p); await clickNext(p); await sleep(250);
   st = await store(p); ids = Object.keys(st).filter(k => k.startsWith('responses/int-'));
-  check(ids.length === 1 && st[ids[0]].weights.int.SOC === 10 && st[ids[0]].weights.sa.TEC === 9, 'correction overwrites the same record');
+  check(ids.length === 1 && st[ids[0]].weights.ch.SOC === 10 && st[ids[0]].weights.sa.TEC === 9, 'correction overwrites the same record');
   await sleep(1200); await p.reload(); await sleep(300);
   check(await until(async () => (await h2(p)) === 'Saved.'), 'done screen survives reload');
   await p.click('#nextresp'); await sleep(60);
   s = await state(p);
   check(s.step === 'intro' && !s.consent && s.exp === null && s.cat === null && !s.docId && !s.ref, 'Start next response gives a blank form starting at consent');
 
-  // interview 2: unpaired technology, skip importance, rapid clicks
+  // interview 2: one-part technology, skip importance, rapid clicks
   await intro(p);
   await p.click('#exp0'); await p.click('#next'); await sleep(400);
   check(await step(p) === 'q2', 'quick select + Next does not skip a question (q2)');
   await p.click('#sector0'); await p.click('#next'); await sleep(400);
   check(await step(p) === 'q3', 'quick select + Next does not skip a question (q3)');
-  await p.click('#c-ccs_eor'); await clickNext(p);
-  check(await step(p) === 'plan' && !(await appText(p)).includes('What we mean by co-benefits'), 'one-part explanation for unpaired technology');
+  await p.click('#c-erw'); await clickNext(p);
+  check(await step(p) === 'plan' && !(await appText(p)).includes('Co-host') && (await appText(p)).includes('normally deployed'), 'one-part explanation for a technology without variants');
   await clickNext(p);
-  check((await p.$eval('.tag.part', e => e.textContent)) === 'CCS: enhanced oil recovery', 'unpaired label is just the technology name');
+  check(await step(p) === 'sa' && (await p.$eval('.tag.part', e => e.textContent)) === 'Baseline', 'one-part baseline card has no part number');
+  await clickNext(p);
+  check((await p.$eval('.tag.part', e => e.textContent)) === 'Enhanced rock weathering', 'one-part label is just the technology name');
   await p.click('.cell[data-l="3"][data-i="3"]'); await p.click('#next'); await sleep(400);
   check(await step(p) === 'sa:PRI', 'tap + immediate Next advances exactly one risk');
   for (let k = 0; k < 12 && (await step(p)).startsWith('sa:'); k++) { await p.click('.cell[data-l="2"][data-i="3"]'); await sleep(330); }
-  check(await step(p) === 'wsa', 'unpaired technology goes to its importance question');
+  check(await step(p) === 'wsa', 'one-part technology goes to its importance question');
   await p.click('#wskip'); await sleep(60);
   check(await step(p) === 'review', 'Skip goes to review');
-  check((await appText(p)).includes('Part 1: 9 of 9') && !(await appText(p)).includes('Part 2'), 'review summary for unpaired technology');
+  check((await appText(p)).includes('9 of 9 risks rated') && !(await appText(p)).includes('Part 2'), 'review summary for one-part technology');
   await p.fill('#ref', 'R2'); await clickNext(p); await sleep(250);
   st = await store(p); ids = Object.keys(st).filter(k => k.startsWith('responses/int-'));
   check(ids.length === 2, 'second interview stored as a separate record');
   const d2 = ids.map(k => st[k]).find(x => x.ref === 'R2');
-  check(d2 && d2.weights.sa === null && d2.weights.int === null && d2.integration === null && d2.cat === 'ccs_eor', 'unpaired record has no integration or importance');
+  check(d2 && d2.weights.sa === null && d2.parts.cp === null && d2.parts.ch === null && d2.cat === 'erw' && d2.modelStandalone === 'ERW_AG', 'one-part record has no variants or importance');
   await p.click('#nextresp'); await sleep(60);
 
-  // interview 3: change technology part-way, redo part 2 after saving
+  // interview 3: change technology part-way, two-part technology, redo co-host after saving
   await about(p, 3, 0, 'dac_ss');
   await p.click('.cell[data-l="2"][data-i="2"]'); await sleep(330);
-  for (let k = 0; k < 3; k++) await p.click('#back');
+  for (let k = 0; k < 4; k++) await p.click('#back');
   await sleep(60);
   check(await step(p) === 'q3', 'Back reaches technology question');
-  await p.click('#c-cew'); await clickNext(p); await clickNext(p);
+  await p.click('#c-cew'); await clickNext(p); await clickNext(p); await clickNext(p);
   check(Object.keys((await state(p)).ratings.sa).length === 0, 'changing technology clears earlier ratings');
   await rateAll(p, 'sa', P9(3, 4)); await clickNext(p);
-  check((await h2(p)) === 'Coastal weathering in beach nourishment', 'CEW integration intro');
+  check(await step(p) === 'ch' && (await h2(p)) === 'Coastal weathering hosted by a beach-nourishment programme', 'coastal weathering goes straight to its co-host part');
+  check((await p.$eval('.tag.part', e => e.textContent)) === 'Part 2 · Co-host', 'co-host numbered as part 2 when there is no co-product');
   await clickNext(p);
-  await rateAll(p, 'int', P9(2, 3));
+  await rateAll(p, 'ch', P9(2, 3));
   await clickNext(p); // accept default sliders
   check(await step(p) === 'review', 'review reached');
   await p.fill('#ref', 'R3'); await clickNext(p); await sleep(250);
-  await p.click('[data-redo="int"]'); await sleep(60);
-  check(await step(p) === 'int', 'Redo part 2 opens the integration intro');
-  check(Object.keys((await state(p)).ratings.int).length === 0 && Object.keys((await state(p)).ratings.sa).length === 9, 'Redo part 2 cleared part 2 only');
-  await clickNext(p); await rateAll(p, 'int', P9(1, 2)); await clickNext(p);
+  await p.click('[data-redo="ch"]'); await sleep(60);
+  check(await step(p) === 'ch', 'Redo co-host opens its card');
+  check(Object.keys((await state(p)).ratings.ch).length === 0 && Object.keys((await state(p)).ratings.sa).length === 9, 'Redo co-host cleared that part only');
+  await clickNext(p); await rateAll(p, 'ch', P9(1, 2)); await clickNext(p);
   await clickNext(p); await sleep(250);
   st = await store(p); ids = Object.keys(st).filter(k => k.startsWith('responses/int-'));
   check(ids.length === 3, 'three interviews stored (correction overwrote R3)');
@@ -253,14 +287,14 @@ async function riskScreenChecks(p, label){
   // responses panel
   await p.click('#toggle-results'); await sleep(150);
   check(await until(async () => (await p.$eval('#results h2', e => e.textContent)) === '3 responses'), 'panel counts 3 responses');
-  check(await p.$$eval('#results tbody tr', r => r.length) >= 5, 'panel table has rows per technology');
+  check(await p.$$eval('#results tbody tr', r => r.length) >= 6, 'panel table has rows per technology and part');
   check(await p.$$eval('#results .ritem', r => r.length) === 3, 'panel lists 3 individual responses');
   await p.click('#csv'); await sleep(50);
   const dl = await p.evaluate(() => window.__downloads.slice(-1)[0]);
   const lines = dl ? dl.data.split('\n') : [];
   check(dl && dl.filename.endsWith('.csv'), 'CSV download offered');
-  check(lines.length === 1 + (18 + 9 + 18) + (18 + 0 + 18), 'CSV has one row per rating and importance score (' + lines.length + ')');
-  check(lines.some(l => l.includes('importance integrated')), 'CSV separates part 2 importance');
+  check(lines.length === 1 + (27 + 27) + (9 + 0) + (18 + 18), 'CSV has one row per rating and importance score (' + lines.length + ')');
+  check(lines.some(l => l.includes('importance co-host')) && lines.some(l => l.includes(',co-product,')), 'CSV labels the parts');
   const delBtn = await p.$('#results [data-del]');
   await delBtn.click(); await sleep(30);
   check((await p.$eval('#results [data-del]', e => e.textContent)).includes('again'), 'Delete needs a second tap');
@@ -277,7 +311,9 @@ async function riskScreenChecks(p, label){
   await sleep(200);
   check(!(await p.isVisible('#toggle-results')), 'Responses button hidden for respondent');
   await about(p, 2, 1, 'oae_min');
-  await rateAll(p, 'sa', P9(3, 3)); await clickNext(p); await clickNext(p); await rateAll(p, 'int', P9(2, 2)); await clickNext(p);
+  await rateAll(p, 'sa', P9(3, 3)); await clickNext(p);
+  check(await step(p) === 'ch', 'mineral alkalinity has a co-host part');
+  await clickNext(p); await rateAll(p, 'ch', P9(2, 2)); await clickNext(p);
   check(!(await p.$('#ref')), 'no reference field for respondent');
   await clickNext(p); await sleep(250);
   st = await store(p);
@@ -294,28 +330,38 @@ async function riskScreenChecks(p, label){
   check(p.errors.length === 0, 'no page errors in respondent run: ' + p.errors.join(' | '));
   await ctx.close();
 
-  // ---------- S3: no runtime (public page) -> Google Form; interview offer
+  // ---------- S3: no runtime (public page) -> Google Form; a skipped part; interview offer
   console.log('S3 public page');
   ({ctx, page: p} = await newCtx(browser, 'none'));
-  await about(p, 0, 4, 'erw');
-  await rateAll(p, 'sa', P9(2, 2)); await clickNext(p); await clickNext(p); await rateAll(p, 'int', P9(2, 2)); await clickNext(p); await clickNext(p); await sleep(200);
+  await about(p, 0, 4, 'dac_ss');
+  await rateAll(p, 'sa', P9(2, 2)); await clickNext(p);
+  check(await step(p) === 'cp', 'co-product card reached');
+  await p.click('#pskip'); await sleep(60);
+  check(await step(p) === 'ch', 'Skip this part goes to the next part');
+  await p.click('#back'); await sleep(60);
+  check(await step(p) === 'cp' && (await state(p)).skip.cp === true, 'Back returns to the skipped part card');
+  await p.click('#pskip'); await sleep(60);
+  await clickNext(p); await rateAll(p, 'ch', P9(2, 2)); await clickNext(p);
+  check((await appText(p)).includes('Part 2 (co-product): skipped'), 'review shows the skipped part');
+  await clickNext(p); await sleep(200);
   check(await until(async () => (await h2(p)) === 'Thank you for your time!'), 'saved via Google Form when no claude.ai runtime');
   check(p.posts.length === 1, 'exactly one form POST (' + p.posts.length + ')');
   const form = new URLSearchParams(p.posts[0] || '');
   const code = form.get('entry.269220021') || '';
   check(code.startsWith('CDRRISK2.'), 'form POST carries the answer code');
   const cols = (form.get('entry.530102048') || '').split('|'); const hdr = await p.evaluate(() => window.__tableHeader);
-  check(cols.length === hdr.length && hdr.length === 69, 'table record has one value per header column (' + cols.length + '/' + hdr.length + ')');
-  check(cols[0] === 'R3' && cols[7] === 'Enhanced rock weathering' && cols[8] === 'Rock weathering sold to farmers', 'table record names technology and integration');
-  check(cols[hdr.indexOf('P1 Technology risk likelihood')] === '2' && cols[hdr.indexOf('P2 Acceptance risk impact')] === '2' && cols[hdr.indexOf('P1 importance Policy risk')] === '5' && cols[hdr.indexOf('P2 importance Certification risk')] === '5', 'table record values in the right columns');
+  check(cols.length === hdr.length && hdr.length === 97, 'table record has one value per header column (' + cols.length + '/' + hdr.length + ')');
+  check(cols[0] === 'R4' && cols[7] === 'DAC: solid sorbent' && cols[8] === 'Solid-sorbent DAC selling recovered water (skipped)' && cols[9] === 'DAC at a data centre', 'table record names technology and parts');
+  check(cols[hdr.indexOf('BL Technology risk likelihood')] === '2' && cols[hdr.indexOf('CH Acceptance risk impact')] === '2' && cols[hdr.indexOf('CP Technology risk likelihood')] === '' &&
+        cols[hdr.indexOf('BL importance Policy risk')] === '5' && cols[hdr.indexOf('CP importance Policy risk')] === '' && cols[hdr.indexOf('CH importance Certification risk')] === '5', 'table record values in the right columns');
   check(!!cols[hdr.indexOf('consent_at')], 'table record carries consent time');
-  check(hdr.indexOf('comment') === 64 && hdr.slice(65).join() === 'started_at,total_seconds,active_seconds,seconds_per_screen', 'timing columns appended after the R2 columns');
+  check(hdr.slice(-4).join() === 'started_at,total_seconds,active_seconds,seconds_per_screen', 'timing columns at the end');
   const tStart = cols[hdr.indexOf('started_at')], tTot = +cols[hdr.indexOf('total_seconds')], tAct = +cols[hdr.indexOf('active_seconds')], tScr = cols[hdr.indexOf('seconds_per_screen')];
   check(!isNaN(Date.parse(tStart)) && Date.parse(tStart) <= Date.parse(cols[1]), 'started_at is a time before submission (' + tStart + ')');
   check(tTot >= 1 && tAct >= 1 && tAct <= tTot + 1, 'total and active seconds recorded (' + tTot + ' / ' + tAct + ')');
-  check(/^intro=\d+;q1=\d+;/.test(tScr) && tScr.includes('sa:TEC=') && tScr.includes('int:CER=') && tScr.includes('review='), 'seconds per screen recorded in survey order (' + tScr.slice(0, 60) + '…)');
+  check(/^intro=\d+;q1=\d+;/.test(tScr) && tScr.includes('sa:TEC=') && tScr.includes('ch:CER=') && !tScr.includes('cp:TEC=') && tScr.includes('review='), 'seconds per screen recorded in survey order (' + tScr.slice(0, 60) + '…)');
   const sent = JSON.parse(Buffer.from(code.slice(9), 'base64').toString('utf8'));
-  check(sent.v === 4 && sent.timing && sent.timing.totalS === tTot && sent.timing.steps.intro >= 0 && sent.cat === 'erw' && Object.keys(sent.ratings.sa).length === 9 && Object.keys(sent.ratings.int).length === 9 && sent.rid && sent.consent.given, 'decoded form payload is complete');
+  check(sent.v === 5 && sent.timing && sent.timing.totalS === tTot && sent.cat === 'dac_ss' && Object.keys(sent.ratings.sa).length === 9 && Object.keys(sent.ratings.cp).length === 0 && Object.keys(sent.ratings.ch).length === 9 && sent.parts.cp.skipped === true && sent.weights.cp === null && sent.rid && sent.consent.given, 'decoded form payload is complete');
   check(await p.$eval('#bk', e => e.value) === code, 'backup code matches what was sent');
   // interview offer
   await p.click('#iv1'); await sleep(40);
@@ -337,7 +383,7 @@ async function riskScreenChecks(p, label){
   console.log('S3b form unreachable');
   ({ctx, page: p} = await newCtx(browser, 'none'));
   await p.unroute(/docs\.google\.com\/forms/); await p.route(/docs\.google\.com\/forms/, r => {}); // never answers
-  await about(p, 0, 0, 'ccs_pow'); for (let k = 0; k < 9; k++) { await p.click('.cell[data-l="2"][data-i="2"]'); await sleep(330); }
+  await about(p, 0, 0, 'erw'); for (let k = 0; k < 9; k++) { await p.click('.cell[data-l="2"][data-i="2"]'); await sleep(330); }
   await clickNext(p); await clickNext(p);
   check(await until(async () => (await h2(p)) === 'One last step: send your answers', 16000), 'email fallback when the form cannot be reached');
   check((await p.$eval('#code', e => e.value)).startsWith('CDRRISK2.'), 'fallback shows answer code');
@@ -352,7 +398,7 @@ async function riskScreenChecks(p, label){
   const rids = [];
   for (const [n, catId, ref] of [[0,'dac_ss','A1'],[1,'ccs_ind','A2'],[2,'oae_min','A3']]) {
     await about(p, n, n, catId);
-    for (let k = 0; k < 30 && (await step(p)) !== 'review'; k++) { if (await p.$('.cell')) { await p.click('.cell[data-l="3"][data-i="2"]'); await sleep(330); } else await clickNext(p); }
+    for (let k = 0; k < 50 && (await step(p)) !== 'review'; k++) { if (await p.$('.cell')) { await p.click('.cell[data-l="3"][data-i="2"]'); await sleep(330); } else await clickNext(p); }
     check(await p.isVisible('#ref'), 'reference field shown in interview mode');
     await p.fill('#ref', ref); await clickNext(p);
     check(await until(async () => (await h2(p)) === 'Saved.'), 'interview saved screen for ' + ref);
@@ -383,9 +429,9 @@ async function riskScreenChecks(p, label){
   // ---------- S5: stale browser state
   console.log('S5 stale state');
   ({ctx, page: p} = await newCtx(browser, 'editor'));
-  await p.evaluate(k => localStorage.setItem(k, JSON.stringify({step:'sa:TEC', cat:'min', ratings:{sa:{},int:{}}})), KEY);
+  await p.evaluate(k => localStorage.setItem(k, JSON.stringify({step:'sa:TEC', cat:'biooil', ratings:{sa:{},cp:{},ch:{}}, weights:{sa:{},cp:{},ch:{}}, rankDone:{}, skip:{}})), KEY);
   await p.reload(); await sleep(250);
-  check(await p.isVisible('#consent'), 'unknown technology in saved state falls back to the intro');
+  check(await p.isVisible('#consent'), 'removed technology in saved state falls back to the intro');
   check(p.errors.length === 0, 'no page errors with stale state: ' + p.errors.join(' | '));
   await ctx.close();
 
@@ -397,14 +443,16 @@ async function riskScreenChecks(p, label){
   check(pw[0] <= pw[1], 'no sideways scroll on phone (' + pw + ')');
   const cellBox = await p.$eval('.cell', e => e.getBoundingClientRect().width);
   check(cellBox >= 40, 'grid squares stay tappable on phone (' + Math.round(cellBox) + 'px)');
-  await rateAll(p, 'sa', P9(3, 3)); await clickNext(p); await clickNext(p); await rateAll(p, 'int', P9(3, 3));
+  await rateAll(p, 'sa', P9(3, 3)); await clickNext(p);
+  check(await step(p) === 'cp' && (await h2(p)) === 'BECCS at a biomethane plant', 'BECCS co-product is the biomethane plant');
+  await clickNext(p); await rateAll(p, 'cp', P9(3, 3));
   const rw = await p.evaluate(() => [document.documentElement.scrollWidth, innerWidth]);
   check(rw[0] <= rw[1], 'importance question has no sideways scroll on phone');
   await p.screenshot({path: path.join(__dirname, 'phone-rank.png')});
   check(p.errors.length === 0, 'no page errors on phone: ' + p.errors.join(' | '));
   await ctx.close();
 
-  await browser.close();
+  await browser.close(); server.close();
   console.log(`\n${passes} checks passed, ${fails} failed`);
   process.exit(fails ? 1 : 0);
 })();
