@@ -1,7 +1,7 @@
-// End-to-end click tests for the survey page (v7 flow) against a mocked claude.ai runtime.
-// Flow: intro + consent -> 3 background questions -> "what happens next" -> for each part of the chosen technology
-//       (baseline, then one variant: co-product or co-host; a technology with both gets one at random):
-//       part card -> 7 risks -> importance -> review -> thank-you screen (interview offer).
+// End-to-end click tests for the survey page (v8 flow) against a mocked claude.ai runtime.
+// Flow: intro + consent -> 3 background questions -> "what happens next" -> baseline: part card -> 7 risk grids -> importance;
+//       then one variant (co-product or co-host; a technology with both gets one at random): part card -> one comparison page
+//       (7 sliders, much lower … much higher than the baseline) -> importance -> review -> thank-you screen (interview offer).
 //       The variant can be skipped on its card. Contexts can fix Math.random (opts.random) to choose the variant.
 const { chromium } = require('playwright');
 const path = require('path');
@@ -18,7 +18,7 @@ const server = http.createServer((req, res) => {
 const listening = new Promise(r => server.listen(0, '127.0.0.1', () => r(server.address().port)));
 let PAGE;
 const MOCK = require('fs').readFileSync(path.join(__dirname, 'mock.js'), 'utf8');
-const KEY = 'cdr-risk-survey-v8';
+const KEY = 'cdr-risk-survey-v9';
 const ORDER = ['TEC','PRI','POL','CUR','CON','CPT','SOC'];
 const TITLES = ['Technology risk','Price risk','Policy risk','Supply chain risk','Cost risk','Counterparty risk','Permitting and acceptance risk'];
 const NR = ORDER.length;
@@ -93,6 +93,13 @@ async function about(p, exp, sector, cat, rank){
   await clickNext(p);
 }
 const P7 = (L, I) => Array(NR).fill([L, I]);
+const C7 = x => Array(NR).fill(x);
+// Comparison page of a co-product / co-host part: vals = change per risk in ORDER, -2 (much lower) … +2 (much higher).
+async function compareAll(p, scn, vals){
+  check(await step(p) === scn + ':cmp', `expected ${scn}:cmp, got ${await step(p)}`);
+  for (let i = 0; i < NR; i++) await p.fill('#c-' + ORDER[i], String(vals[i] + 3));
+  await sleep(30); await clickNext(p);
+}
 async function riskScreenChecks(p, label){
   const t = await p.$eval('.qblock .tag', e => e.textContent);
   check(TITLES.includes(t), label + ': risk title shown (' + t + ')');
@@ -212,12 +219,35 @@ async function riskScreenChecks(p, label){
   check((await h2(p)) === 'Solid-sorbent DAC selling recovered water', 'co-product title shown');
   check((await appText(p)).includes('Where the revenue comes from') && (await appText(p)).includes('recovered water'), 'co-product card states the revenue');
   check(await p.isVisible('#pskip'), 'co-product part can be skipped');
+  check((await appText(p)).includes('Say how 7 risks change compared with the baseline'), 'co-product card says the part is rated against the baseline');
   await clickNext(p);
-  check(await step(p) === 'cp:TEC', 'Start part 2 opens its first risk');
-  await riskScreenChecks(p, 'co-product');
-  check((await p.$eval('.tag.part', e => e.textContent)) === 'Part 2 · Solid-sorbent DAC selling recovered water', 'part 2 label');
-  check(await p.$$eval('#app .cell span', els => els.length) === 0, 'part 2 grid shows no earlier labels');
-  for (const v of [[3,3],[3,3],[3,2],[2,4],[4,3],[3,3],[2,3]]) { await p.click(`.cell[data-l="${v[0]}"][data-i="${v[1]}"]`); await sleep(330); }
+  check(await step(p) === 'cp:cmp', 'Start part 2 opens the comparison page');
+  check((await h2(p)) === 'If the project also earned this revenue, how would these risks change?', 'co-product comparison question');
+  check((await p.$eval('.scn', e => e.textContent)).includes('Solid-sorbent DAC selling recovered water') && (await p.$eval('.scn', e => e.textContent)).includes('recovered water to local'), 'comparison page describes the scenario and its revenue');
+  check((await p.$eval('.tag.part', e => e.textContent)) === 'Part 2 · Co-product', 'comparison page part label');
+  check(await p.$$eval('.cn', e => e.map(x => x.textContent).join('|')) === TITLES.join('|'), 'one slider row per risk, in the agreed order');
+  check(await p.$eval('.cscale', e => e.textContent) === 'Much lowerLowerSameHigherMuch higher', 'five-point scale from much lower to much higher');
+  check(await p.$$eval('input[type=range][data-c]', e => e.length === 7 && e.every(x => x.min === '1' && x.max === '5' && x.value === '3')), '7 five-point sliders starting at the middle');
+  check(await p.$$eval('.cv', e => e.every(x => x.textContent === 'Not set')), 'sliders read Not set before they are touched');
+  check(!(await p.$('.cell')) && !(await p.$('#ns')), 'no likelihood/impact grid on the comparison page');
+  check(!(await p.isVisible('#d-POL')), 'definition hidden by default');
+  await p.click('.info[data-i="POL"]'); await sleep(30);
+  check(await p.isVisible('#d-POL') && (await p.$eval('#d-POL', e => e.textContent)).includes('subsidies'), 'i button shows the definition');
+  await p.click('.info[data-i="CPT"]'); await sleep(30);
+  check(!(await p.isVisible('#d-POL')) && await p.isVisible('#d-CPT'), 'only one definition open at a time');
+  await p.click('.info[data-i="CPT"]'); await sleep(30);
+  check(!(await p.isVisible('#d-CPT')), 'i button hides it again');
+  await clickNext(p);
+  check(await step(p) === 'cp:cmp' && (await p.$eval('#cerr', e => e.textContent)).startsWith('7 not set') && await p.isVisible('#cerr'), 'first Next with unset sliders warns and stays');
+  await p.click('#c-CON'); await sleep(30);
+  check((await state(p)).ratings.cp.CON === 0 && await p.$eval('#cv-CON', e => e.textContent) === 'Same', 'tapping a slider at the middle records Same');
+  check(await p.$eval('#cerr', e => e.textContent) === '', 'warning clears once a slider is set');
+  await p.fill('#c-PRI', '1'); await p.fill('#c-TEC', '2');
+  check(await p.$eval('#cv-PRI', e => e.textContent) === 'Much lower' && await p.$eval('#cv-TEC', e => e.textContent) === 'Lower', 'slider labels update');
+  await p.click('#back'); await sleep(60); await clickNext(p);
+  check(await step(p) === 'cp:cmp' && await p.$eval('#c-PRI', e => e.value) === '1' && await p.$eval('#cv-POL', e => e.textContent) === 'Not set', 'answers kept after Back/Next; untouched sliders still Not set');
+  for (const [id, v] of [['POL', 3], ['CUR', 4], ['CPT', 2], ['SOC', 5]]) await p.fill('#c-' + id, String(v));
+  await clickNext(p);
   check(await step(p) === 'wcp' && (await appText(p)).includes('co-product version'), 'co-product importance after co-product risks');
   check((await appText(p)).includes('(solid-sorbent DAC selling recovered water)'), 'importance question names the variant');
   await p.click('.info[data-i="CUR"]'); await sleep(30);
@@ -229,7 +259,7 @@ async function riskScreenChecks(p, label){
   await p.fill('#w-PRI', '2');
   check(await p.$eval('#wv-PRI', e => e.textContent) === '2', 'slider value label updates');
   await p.click('#back'); await sleep(60);
-  check(await step(p) === 'cp:SOC', 'Back from importance goes to last risk');
+  check(await step(p) === 'cp:cmp', 'Back from importance goes to the comparison page');
   await clickNext(p);
   check(await p.$eval('#w-PRI', e => e.value) === '2', 'slider values kept after Back/Next');
   await p.focus('body'); await p.keyboard.press('ArrowRight'); await sleep(60);
@@ -246,9 +276,10 @@ async function riskScreenChecks(p, label){
   ids = Object.keys(st).filter(k => k.startsWith('responses/int-'));
   check(ids.length === 1, 'double-click on Submit stores exactly one record (got ' + ids.length + ')');
   const d1 = st[ids[0]];
-  check(d1 && d1.v === 6 && d1.consent && d1.consent.given === true && d1.consent.at && d1.timing && d1.timing.activeS >= 0, 'record carries consent and timing');
+  check(d1 && d1.v === 7 && d1.consent && d1.consent.given === true && d1.consent.at && d1.timing && d1.timing.activeS >= 0, 'record carries consent and timing');
   check(d1 && d1.ref === 'R1' && d1.mode === 'interview' && d1.source === 'interview', 'record carries reference and interview mode');
-  check(d1 && d1.v === 6 && Object.keys(d1.ratings.sa).length === 7 && d1.ratings.sa.POL === 'ns' && Object.keys(d1.ratings.cp).length === 7 && Object.keys(d1.ratings.ch).length === 0, 'record has 7 + 7 ratings with not-sure');
+  check(d1 && d1.v === 7 && Object.keys(d1.ratings.sa).length === 7 && d1.ratings.sa.POL === 'ns' && Object.keys(d1.ratings.cp).length === 7 && Object.keys(d1.ratings.ch).length === 0, 'record has 7 + 7 ratings with not-sure');
+  check(d1 && JSON.stringify(ORDER.map(k => d1.ratings.cp[k])) === '[-1,-2,0,1,0,-1,2]', 'co-product stored as change from the baseline, -2 … +2 (' + JSON.stringify(d1 && d1.ratings.cp) + ')');
   check(d1 && d1.modelStandalone === 'DAC_SS' && d1.parts.cp.model === 'new:DAC_SS_H2O' && d1.parts.ch === null && !d1.parts.cp.skipped && d1.variant === 'cp' && d1.variantRandom === true, 'record links the parts to model cases and records the random assignment');
   check(d1 && d1.weights.sa.TEC === 9 && d1.weights.cp.PRI === 2 && d1.weights.ch === null, 'record has two importance sets');
   check(d1 && d1.comment === 'test comment 1' && d1.exp === '2–5 years' && d1.sector === 'Academia or research', 'record has comment and background');
@@ -309,14 +340,14 @@ async function riskScreenChecks(p, label){
   check(await step(p) === 'ch' && (await h2(p)) === 'Coastal weathering hosted by a beach-nourishment programme', 'coastal weathering goes straight to its co-host part');
   check((await p.$eval('.tag.part', e => e.textContent)) === 'Part 2 · Co-host', 'co-host numbered as part 2 when there is no co-product');
   await clickNext(p);
-  await rateAll(p, 'ch', P7(2, 3));
+  await compareAll(p, 'ch', C7(-1));
   await clickNext(p); // accept default sliders
   check(await step(p) === 'review', 'review reached');
   await p.fill('#ref', 'R3'); await clickNext(p); await sleep(250);
   await p.click('[data-redo="ch"]'); await sleep(60);
   check(await step(p) === 'ch', 'Redo co-host opens its card');
   check(Object.keys((await state(p)).ratings.ch).length === 0 && Object.keys((await state(p)).ratings.sa).length === NR, 'Redo co-host cleared that part only');
-  await clickNext(p); await rateAll(p, 'ch', P7(1, 2)); await clickNext(p);
+  await clickNext(p); await compareAll(p, 'ch', C7(1)); await clickNext(p);
   await clickNext(p); await sleep(250);
   st = await store(p); ids = Object.keys(st).filter(k => k.startsWith('responses/int-'));
   check(ids.length === 3, 'three interviews stored (correction overwrote R3)');
@@ -344,6 +375,8 @@ async function riskScreenChecks(p, label){
   check(dl && dl.filename.endsWith('.csv'), 'CSV download offered');
   check(lines.length === 1 + (14 + 14) + (7 + 0) + (14 + 14), 'CSV has one row per rating and importance score (' + lines.length + ')');
   check(lines.some(l => l.includes('importance co-host')) && lines.some(l => l.includes(',co-product,')), 'CSV labels the parts');
+  check(lines[0].includes(',change_vs_baseline,') && lines.some(l => /,co-host,.*,CON,,,0,1,,/.test(l)) && lines.some(l => /,co-product,.*,PRI,,,0,-2,,/.test(l)), 'CSV has the change from the baseline for co-product and co-host');
+  check((await p.$eval('#results tbody', e => e.textContent)).includes('+1 (1)'), 'panel shows the median change for the co-host part');
   const delBtn = await p.$('#results [data-del]');
   await delBtn.click(); await sleep(30);
   check((await p.$eval('#results [data-del]', e => e.textContent)).includes('again'), 'Delete needs a second tap');
@@ -362,7 +395,7 @@ async function riskScreenChecks(p, label){
   await about(p, 2, 1, 'oae_min');
   await rateAll(p, 'sa', P7(3, 3)); await clickNext(p);
   check(await step(p) === 'ch', 'mineral alkalinity has a co-host part');
-  await clickNext(p); await rateAll(p, 'ch', P7(2, 2)); await clickNext(p);
+  await clickNext(p); await compareAll(p, 'ch', C7(0)); await clickNext(p);
   check(!(await p.$('#ref')), 'no reference field for respondent');
   await clickNext(p); await sleep(250);
   st = await store(p);
@@ -400,19 +433,19 @@ async function riskScreenChecks(p, label){
   const code = form.get('entry.269220021') || '';
   check(code.startsWith('CDRRISK2.'), 'form POST carries the answer code');
   const cols = (form.get('entry.530102048') || '').split('|'); const hdr = await p.evaluate(() => window.__tableHeader);
-  check(cols.length === hdr.length && hdr.length === 81, 'table record has one value per header column (' + cols.length + '/' + hdr.length + ')');
-  check(cols[0] === 'R6' && cols[7] === 'DAC: solid sorbent' && cols[8] === '' && cols[9] === 'DAC at a data centre (skipped)' && cols[10] === 'random' && hdr[10] === 'variant_assignment', 'table record names technology, assigned part and assignment');
-  check(cols[hdr.indexOf('BL Technology risk likelihood')] === '2' && cols[hdr.indexOf('BL Permitting and acceptance risk impact')] === '2' && cols[hdr.indexOf('CH Technology risk likelihood')] === '' &&
+  check(cols.length === hdr.length && hdr.length === 67, 'table record has one value per header column (' + cols.length + '/' + hdr.length + ')');
+  check(cols[0] === 'R7' && cols[7] === 'DAC: solid sorbent' && cols[8] === '' && cols[9] === 'DAC at a data centre (skipped)' && cols[10] === 'random' && hdr[10] === 'variant_assignment', 'table record names technology, assigned part and assignment');
+  check(cols[hdr.indexOf('BL Technology risk likelihood')] === '2' && cols[hdr.indexOf('BL Permitting and acceptance risk impact')] === '2' && cols[hdr.indexOf('CH Technology risk change')] === '' && hdr.indexOf('CH Technology risk likelihood') < 0 && hdr.indexOf('CP Permitting and acceptance risk change') > 0 &&
         cols[hdr.indexOf('BL importance Policy risk')] === '5' && cols[hdr.indexOf('CH importance Policy risk')] === '' && hdr.indexOf('BL Certification risk likelihood') < 0 && hdr.indexOf('BL Regulatory risk likelihood') < 0, 'table record values in the right columns, 7 risks');
   check(!!cols[hdr.indexOf('consent_at')], 'table record carries consent time');
   check(hdr.slice(-5).join() === 'started_at,total_seconds,active_seconds,seconds_per_screen,technology_risk_rank', 'timing and ranking columns at the end');
-  check(cols[80] === '1=BECCS;2=Enhanced rock weathering;3=DAC: solid sorbent', 'technology ranking recorded in tap order, re-tap removes (' + cols[80] + ')');
+  check(cols[66] === '1=BECCS;2=Enhanced rock weathering;3=DAC: solid sorbent', 'technology ranking recorded in tap order, re-tap removes (' + cols[66] + ')');
   const tStart = cols[hdr.indexOf('started_at')], tTot = +cols[hdr.indexOf('total_seconds')], tAct = +cols[hdr.indexOf('active_seconds')], tScr = cols[hdr.indexOf('seconds_per_screen')];
   check(!isNaN(Date.parse(tStart)) && Date.parse(tStart) <= Date.parse(cols[1]), 'started_at is a time before submission (' + tStart + ')');
   check(tTot >= 1 && tAct >= 1 && tAct <= tTot + 1, 'total and active seconds recorded (' + tTot + ' / ' + tAct + ')');
   check(/^intro=\d+;q1=\d+;/.test(tScr) && tScr.includes('sa:TEC=') && tScr.includes('sa:SOC=') && !tScr.includes('ch:TEC=') && !tScr.includes('cp') && tScr.includes('review='), 'seconds per screen recorded in survey order (' + tScr.slice(0, 60) + '…)');
   const sent = JSON.parse(Buffer.from(code.slice(9), 'base64').toString('utf8'));
-  check(sent.v === 6 && (sent.techRank || []).join() === 'beccs,erw,dac_ss' && sent.timing && sent.timing.totalS === tTot && sent.cat === 'dac_ss' && Object.keys(sent.ratings.sa).length === 7 && Object.keys(sent.ratings.cp).length === 0 && Object.keys(sent.ratings.ch).length === 0 && sent.parts.cp === null && sent.parts.ch.skipped === true && sent.weights.ch === null && sent.variant === 'ch' && sent.variantRandom === true && sent.rid && sent.consent.given, 'decoded form payload is complete');
+  check(sent.v === 7 && (sent.techRank || []).join() === 'beccs,erw,dac_ss' && sent.timing && sent.timing.totalS === tTot && sent.cat === 'dac_ss' && Object.keys(sent.ratings.sa).length === 7 && Object.keys(sent.ratings.cp).length === 0 && Object.keys(sent.ratings.ch).length === 0 && sent.parts.cp === null && sent.parts.ch.skipped === true && sent.weights.ch === null && sent.variant === 'ch' && sent.variantRandom === true && sent.rid && sent.consent.given, 'decoded form payload is complete');
   check(await p.$eval('#bk', e => e.value) === code, 'backup code matches what was sent');
   // interview offer
   await p.click('#iv1'); await sleep(40);
@@ -507,7 +540,14 @@ async function riskScreenChecks(p, label){
   check(cellBox >= 40, 'grid squares stay tappable on phone (' + Math.round(cellBox) + 'px)');
   await rateAll(p, 'sa', P7(3, 3)); await clickNext(p);
   check(await step(p) === 'cp' && (await h2(p)) === 'Biomass plant turning its CO₂ into methane' && (await appText(p)).includes('no removal credits'), 'BECCS co-product: CO₂ turned into methane, no removal credits');
-  await clickNext(p); await rateAll(p, 'cp', P7(3, 3));
+  await clickNext(p);
+  check(await step(p) === 'cp:cmp' && (await h2(p)) === 'If the project also earned this revenue, how would these risks change?', 'BECCS co-product comparison page');
+  const cw = await p.evaluate(() => [document.documentElement.scrollWidth, innerWidth, document.documentElement.scrollHeight, innerHeight]);
+  check(cw[0] <= cw[1] && cw[2] <= cw[3], 'comparison page has no sideways or page scroll on phone (' + cw + ')');
+  const sw = await p.$eval('#c-TEC', e => e.getBoundingClientRect().width);
+  check(sw >= 250, 'sliders use the full width on phone (' + Math.round(sw) + 'px)');
+  await p.screenshot({path: path.join(__dirname, 'phone-compare.png')});
+  await compareAll(p, 'cp', [0, 1, -1, 0, 0, 1, 0]);
   const rw = await p.evaluate(() => [document.documentElement.scrollWidth, innerWidth]);
   check(rw[0] <= rw[1], 'importance question has no sideways scroll on phone');
   await p.screenshot({path: path.join(__dirname, 'phone-rank.png')});

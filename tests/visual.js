@@ -31,7 +31,7 @@ let fails=0; const check=(c,m)=>{ if(!c){fails++; console.log('  FAIL: '+m);} };
    };
    await snap('intro'); await p.check('#consent'); await p.click('#next'); await sleep(60); await snap('q1'); await p.click('#exp1'); await sleep(260); await snap('q2'); await p.click('#sector1'); await sleep(60); await p.click('#next'); await sleep(60); await snap('rank'); await p.click('.trk[data-t="beccs"]'); await p.click('#next'); await sleep(60); await snap('q3');
    await p.click('#c-'+catId); await p.click('#next'); await sleep(60); await snap('plan'); await p.click('#next'); await sleep(60);
-   for (let k=0;k<50;k++){ const st=await p.evaluate(()=>JSON.parse(localStorage.getItem('cdr-risk-survey-v8')).step); if(st==='wsa'||st==='wch'){await snap(st);} if(st==='review'||(st==='wsa'&&catId==='erw')||st==='wch'){ break; }
+   for (let k=0;k<50;k++){ const st=await p.evaluate(()=>JSON.parse(localStorage.getItem('cdr-risk-survey-v9')).step); if(st==='wsa'||st==='wch'){await snap(st);} if(st==='review'||(st==='wsa'&&catId==='erw')||st==='wch'){ break; }
      await snap(st); if (await p.$('.cell')) { await p.click('.cell[data-l="'+(1+k%5)+'"][data-i="'+(1+(k*2)%5)+'"]'); await sleep(300); } else { await p.click('#next'); await sleep(60); } }
    if (w===1366 && catId==='cew') { await p.screenshot({path:path.join(__dirname,'v-rank.png')}); }
    await p.click('.info[data-i="CUR"]'); await sleep(30); await snap('rank-info');
@@ -43,7 +43,7 @@ let fails=0; const check=(c,m)=>{ if(!c){fails++; console.log('  FAIL: '+m);} };
    check(mat.size===1, tag+': grid width/position changes '+[...mat]);
    check(docScroll===0, tag+': page itself scrolls on '+docScroll+' screens');
    console.log(tag.padEnd(18),'square',[...cells].join(),'next y',[...navY].join(),'inner scroll on:',innerScroll.join(',')||'none');
-   if (catId==='cew') { await p.evaluate(()=>{ const s=JSON.parse(localStorage.getItem('cdr-risk-survey-v8')); s.step='ch:PRI'; s.done=null; localStorage.setItem('cdr-risk-survey-v8',JSON.stringify(s)); }); await p.reload(); await sleep(150); await p.screenshot({path:path.join(__dirname,'v-'+w+'x'+h+'.png')}); }
+   if (catId==='cew') { await p.evaluate(()=>{ const s=JSON.parse(localStorage.getItem('cdr-risk-survey-v9')); s.step='ch:cmp'; s.done=null; localStorage.setItem('cdr-risk-survey-v9',JSON.stringify(s)); }); await p.reload(); await sleep(150); await p.screenshot({path:path.join(__dirname,'v-'+w+'x'+h+'.png')}); }
    await ctx.close();
   } }
  console.log(fails?fails+' visual checks failed':'all visual checks passed'); await b.close(); server.close(); })();
