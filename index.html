@@ -148,7 +148,18 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .facts>div{display:grid;grid-template-columns:minmax(0,7.5rem) minmax(0,1fr);gap:10px;padding:6px 0;border-top:1px solid var(--rule)}
 .facts dt{font-size:.8rem;font-weight:700;color:var(--ink-2);line-height:1.4}
 .facts dd{margin:0;font-size:.92rem;line-height:1.4}
-@media (max-width:480px){.facts>div{grid-template-columns:1fr;gap:1px}}
+.introfacts{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:start}
+.share{margin:0;padding-top:8px;width:140px;text-align:center}
+.share figcaption{margin-top:6px;font-size:.76rem;line-height:1.35;color:var(--ink-2)}
+.share .url{user-select:all}
+.share .url>span{white-space:nowrap}
+.qr{display:block;width:112px;height:112px;margin:0 auto;border-radius:4px;overflow:hidden}
+.qr svg{display:block;width:100%;height:100%}
+@media (max-width:480px){.facts>div{grid-template-columns:1fr;gap:1px}
+.introfacts{grid-template-columns:1fr;gap:4px}
+.share{display:flex;gap:12px;align-items:center;width:auto;text-align:left;border-top:1px solid var(--rule)}
+.share figcaption{margin-top:0}
+.qr{margin:0;flex:none}}
 .consent{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--rule);border-radius:var(--r);cursor:pointer;font-size:.92rem;line-height:1.4}
 .consent input{width:20px;height:20px;margin:1px 0 0;flex:none;accent-color:var(--accent)}
 .steps2{display:grid;gap:8px;margin:0;padding:0;list-style:none}
@@ -208,6 +219,9 @@ td.num{text-align:center}
 (function(){
   "use strict";
   var CONTACT = "r.lee_pereira@hw.ac.uk", FZJ_CONTACT = "m.dukan@fz-juelich.de";
+  // Public survey link and its QR code (generated offline with segno, error correction Q; regenerate if the URL changes).
+  var SURVEY_URL = "https://rjlp-hw-uk.github.io/cdr-risk-survey/";
+  var SURVEY_QR = '<svg xmlns="http://www.w3.org/2000/svg" role="img" aria-label="QR code for the survey link" shape-rendering="crispEdges" viewBox="0 0 37 37"><path fill="#fff" d="M0 0h37v37h-37z"/><path stroke="#000" d="M2 2.5h7m1 0h1m5 0h3m5 0h1m3 0h7m-33 1h1m5 0h1m1 0h1m1 0h3m4 0h1m2 0h2m4 0h1m5 0h1m-33 1h1m1 0h3m1 0h1m2 0h1m2 0h5m4 0h2m3 0h1m1 0h3m1 0h1m-33 1h1m1 0h3m1 0h1m3 0h1m2 0h1m4 0h7m1 0h1m1 0h3m1 0h1m-33 1h1m1 0h3m1 0h1m3 0h1m1 0h1m1 0h2m2 0h2m3 0h1m2 0h1m1 0h3m1 0h1m-33 1h1m5 0h1m4 0h1m3 0h2m3 0h1m5 0h1m5 0h1m-33 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-22 1h1m4 0h1m1 0h1m4 0h2m-24 1h1m4 0h3m1 0h1m1 0h2m1 0h1m1 0h1m1 0h1m2 0h1m1 0h2m5 0h2m-31 1h4m1 0h1m2 0h4m1 0h1m2 0h2m1 0h1m1 0h2m3 0h3m-30 1h2m2 0h3m4 0h1m1 0h1m1 0h1m1 0h1m1 0h3m1 0h2m2 0h1m1 0h1m-30 1h1m1 0h3m2 0h1m2 0h1m3 0h1m2 0h3m1 0h1m1 0h1m2 0h4m1 0h1m-32 1h1m1 0h2m1 0h1m2 0h1m2 0h1m3 0h4m3 0h1m2 0h2m3 0h2m-33 1h4m1 0h1m1 0h10m1 0h3m1 0h2m1 0h3m1 0h1m1 0h2m-27 1h5m1 0h3m1 0h3m1 0h1m1 0h1m2 0h2m1 0h1m2 0h1m-31 1h2m2 0h1m1 0h1m1 0h1m2 0h1m2 0h1m1 0h1m6 0h2m2 0h3m1 0h1m-33 1h1m5 0h1m1 0h4m6 0h1m4 0h1m1 0h1m1 0h2m3 0h1m-33 1h2m1 0h2m2 0h1m2 0h1m1 0h1m3 0h2m1 0h2m2 0h1m1 0h2m2 0h2m1 0h1m-33 1h1m1 0h1m1 0h5m2 0h1m3 0h2m2 0h2m1 0h6m1 0h2m1 0h1m-33 1h1m3 0h1m4 0h1m3 0h1m1 0h2m2 0h2m1 0h1m3 0h1m1 0h4m-32 1h2m2 0h7m1 0h2m1 0h3m1 0h1m2 0h3m2 0h3m1 0h1m-32 1h1m3 0h1m3 0h1m1 0h1m1 0h1m2 0h2m2 0h1m1 0h1m1 0h1m3 0h2m-29 1h1m1 0h1m1 0h5m1 0h1m2 0h6m2 0h2m1 0h1m3 0h4m-32 1h1m2 0h1m4 0h2m1 0h2m2 0h1m3 0h2m1 0h3m1 0h6m-32 1h3m1 0h1m1 0h1m2 0h1m3 0h2m1 0h1m1 0h3m2 0h7m-22 1h6m1 0h1m1 0h1m1 0h1m2 0h1m1 0h1m3 0h1m1 0h3m-33 1h7m1 0h2m4 0h1m1 0h1m3 0h5m1 0h1m1 0h1m1 0h2m-32 1h1m5 0h1m3 0h1m2 0h1m2 0h2m1 0h2m2 0h2m3 0h3m1 0h1m-33 1h1m1 0h3m1 0h1m4 0h1m1 0h1m2 0h1m2 0h2m1 0h1m1 0h6m2 0h1m-33 1h1m1 0h3m1 0h1m2 0h1m1 0h1m3 0h1m3 0h2m1 0h1m2 0h1m1 0h3m2 0h1m-33 1h1m1 0h3m1 0h1m4 0h2m1 0h4m1 0h3m1 0h1m1 0h1m1 0h2m2 0h2m-33 1h1m5 0h1m1 0h3m1 0h1m1 0h4m1 0h1m2 0h2m1 0h4m1 0h1m-31 1h7m6 0h1m2 0h1m5 0h4m1 0h1m3 0h1"/></svg>';
   // Pre-filled form link for respondents who cannot save on this page (e.g. public-link visitors).
   // Paste the form's pre-filled URL up to and including "entry.NNN=" ; the answer code is appended. Leave "" to use email only.
   var FORM_PREFILL = "";
@@ -797,12 +811,13 @@ td.num{text-align:center}
       '<div class="intro"><h2>Why we are doing this</h2>' +
       '<p>This survey started at the GHGT-18 conference. In a session on what holds back the scale-up of carbon dioxide removal (CDR), investment risk, real and perceived, came up as one of several significant barriers. A moment of scientific inspiration followed: could the co-benefits of CDR projects, such as co-products or shared sites, lower that risk and the cost of capital that comes with it?</p>' +
       '<p>The idea was born here this week, so it seemed only right to bring the whole GHGT community into answering it. Your ratings are the data, and we will share what we find with you.</p></div>' +
-      '<dl class="facts">' +
+      '<div class="introfacts"><dl class="facts">' +
         '<div><dt>Who we are</dt><dd>Dr Reinaldo Lee Pereira (Heriot-Watt University, UK) and Dr Mak Đukan (Forschungszentrum Jülich, Germany)</dd></div>' +
         '<div><dt>Time needed</dt><dd>8–15 minutes</dd></div>' +
         '<div><dt>Your data</dt><dd>We do not ask for your name. Results are published only in aggregate.</dd></div>' +
         '<div><dt>Contact</dt><dd><span class="contact">' + esc(CONTACT) + '</span><br><span class="contact">' + esc(FZJ_CONTACT) + '</span></dd></div>' +
       '</dl>' +
+      '<figure class="share"><span class="qr" id="qr">' + SURVEY_QR + '</span><figcaption><b>Share this survey</b><br><span class="url">' + esc(SURVEY_URL.replace(/^https:\/\//, "").replace(/\/$/, "")).split("/").map(function(s){ return '<span>' + s + '</span>'; }).join("/<wbr>") + '</span></figcaption></figure></div>' +
       '<label class="consent"><input type="checkbox" id="consent"' + (S.consent ? " checked" : "") + '><span>I have read the <button type="button" class="linkbtn" id="pn">privacy notice</button>. I am 18 or over, I take part voluntarily, and I agree that my answers are used for this research. I can withdraw my consent at any time.</span></label>' +
       '</div>' + nav(false, "Start survey", !!S.consent);
     var cb = document.getElementById("consent");
