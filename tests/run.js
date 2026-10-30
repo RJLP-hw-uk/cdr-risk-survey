@@ -145,6 +145,9 @@ async function baselineChecks(p, label){
   let {ctx, page: p} = await newCtx(browser, 'none');
   check(await p.isVisible('#consent'), 'consent box on the first page');
   check((await appText(p)).includes('Heriot-Watt') && (await appText(p)).includes('minutes'), 'intro names the team and the time needed');
+  const qr = await p.$eval('#qr svg', s => { const r = s.getBoundingClientRect(); return {w: r.width, h: r.height, vb: s.getAttribute('viewBox'), path: !!s.querySelector('path[stroke]')}; }).catch(() => null);
+  check(qr && qr.w >= 100 && Math.abs(qr.w - qr.h) < 1 && qr.vb === '0 0 37 37' && qr.path, 'intro shows the QR code for sharing (square, at least 100 px)');
+  check((await appText(p)).replace(/\s/g, '').includes('rjlp-hw-uk.github.io/cdr-risk-survey'), 'intro shows the survey link next to the QR code');
   await p.keyboard.press('ArrowRight'); await sleep(60);
   check(await step(p) === undefined || await step(p) === 'intro', 'ArrowRight does not pass the consent page');
   await p.click('#pn'); await sleep(60);
