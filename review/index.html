@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>CDR Risk Survey v11 Preview</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&display=swap">
+<style>
+/* Layout: the live survey's shell (masthead, progress bar, scrolling card, Back / Next footer), trimmed to five screens */
+:root{
+  --bg:#F2F4F1; --surface:#FFFFFF; --ink:#1C2521; --ink-2:#5A665F; --rule:#D3DAD4;
+  --accent:#3E6A2C; --accent-ink:#FFFFFF; --accent-soft:#E3EDDC;
+  --h-low:#DDEBD6; --h-mid:#F2E3B6; --h-high:#F0C9BD; --chip:#1C2521; --chip-ink:#FFFFFF;
+  --warn:#8A3B24; --s-lo:#6FAF5A; --s-mid:#E6B53E; --s-hi:#CF5B43; --scrim:rgba(0,0,0,.45);
+  --f-display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --f-body:"Atkinson Hyperlegible","Segoe UI",system-ui,-apple-system,sans-serif;
+  --r:6px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#131916; --surface:#1B231F; --ink:#E3EAE5; --ink-2:#9EABA4; --rule:#2F3A34;
+  --accent:#9CC46E; --accent-ink:#0F160D; --accent-soft:#25331F;
+  --h-low:#203528; --h-mid:#463D20; --h-high:#4C2A24; --chip:#E3EAE5; --chip-ink:#131916;
+  --warn:#E59A80; --s-lo:#4F8E3F; --s-mid:#B88A26; --s-hi:#B04A37; --scrim:rgba(0,0,0,.6); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#131916; --surface:#1B231F; --ink:#E3EAE5; --ink-2:#9EABA4; --rule:#2F3A34;
+  --accent:#9CC46E; --accent-ink:#0F160D; --accent-soft:#25331F;
+  --h-low:#203528; --h-mid:#463D20; --h-high:#4C2A24; --chip:#E3EAE5; --chip-ink:#131916;
+  --warn:#E59A80; --s-lo:#4F8E3F; --s-mid:#B88A26; --s-hi:#B04A37; --scrim:rgba(0,0,0,.6); color-scheme:dark}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none !important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:400 16px/1.5 var(--f-body);font-variant-numeric:tabular-nums;overflow:hidden}
+.shell{max-width:620px;margin:0 auto;height:100%;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:12px}
+.scroll{min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-bottom:12px}
+#foot{padding-block:10px max(12px,env(safe-area-inset-bottom,0px))}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0}
+h1{font-size:1.5rem;line-height:1.15} h2{font-size:1.3rem;line-height:1.2} h3{font-size:1rem;line-height:1.25}
+p{margin:0} .muted{color:var(--ink-2)} .small{font-size:.86rem}
+.tag{font-size:.8rem;color:var(--ink-2);font-weight:700;letter-spacing:.03em}
+.tag.part{color:var(--accent)}
+header.mast{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.pv{font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--h-mid);color:var(--ink);white-space:nowrap}
+.new{font-size:.66rem;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--h-mid);color:var(--ink);white-space:nowrap;vertical-align:2px;margin-left:4px;font-family:var(--f-body)}
+.bar{height:4px;border-radius:2px;background:var(--rule);overflow:hidden;margin-bottom:12px}
+.bar i{display:block;height:100%;background:var(--accent);width:0}
+@media (prefers-reduced-motion:no-preference){.bar i{transition:width .2s}}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);padding:16px 18px;display:grid;gap:12px}
+.intro{border-left:3px solid var(--accent);padding:6px 0 6px 12px;display:grid;gap:4px}
+.facts{display:grid;margin:0}
+.facts>div{display:grid;grid-template-columns:minmax(0,7.5rem) minmax(0,1fr);gap:10px;padding:6px 0;border-top:1px solid var(--rule)}
+.facts dt{font-size:.8rem;font-weight:700;color:var(--ink-2);line-height:1.4}
+.facts dd{margin:0;font-size:.92rem;line-height:1.4}
+@media (max-width:480px){.facts>div{grid-template-columns:1fr;gap:1px}}
+.contact{font-weight:700;user-select:all}
+.consent{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--rule);border-radius:var(--r);cursor:pointer;font-size:.92rem;line-height:1.4}
+.consent input{width:20px;height:20px;margin:1px 0 0;flex:none;accent-color:var(--accent)}
+.opts{display:grid;gap:8px}
+.opt{position:relative}
+.opt input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.opt label{display:flex;justify-content:space-between;gap:12px;align-items:baseline;padding:11px 14px;border:1px solid var(--rule);border-radius:var(--r);background:var(--surface);cursor:pointer;line-height:1.3}
+.opt label small{color:var(--ink-2);font-size:.82rem}
+.opt input:checked + label{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.opt input:checked + label small{color:var(--accent-ink);opacity:.85}
+.opt input:focus-visible + label{outline:2px solid var(--accent);outline-offset:2px}
+.opts.cats{grid-template-columns:1fr;gap:5px}
+@media (min-width:560px){.opts.cats{grid-template-columns:1fr 1fr}}
+.opts.cats .opt label{flex-direction:column;align-items:flex-start;gap:0;padding:5px 12px;line-height:1.2}
+.opts.row3{grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:6px}
+.opts.row3 .opt label{padding:8px 10px;font-size:.9rem}
+.def{background:var(--accent-soft);border-radius:var(--r);padding:10px 12px;display:grid;gap:4px;font-size:.92rem}
+.scn{background:var(--accent-soft);border-radius:var(--r);padding:8px 10px;display:grid;gap:4px;font-size:.88rem;line-height:1.35}
+.cmp{display:grid;gap:6px}
+.crow{display:grid;gap:3px;padding:7px 10px;border:1px solid var(--rule);border-radius:var(--r)}
+.crow .cl{font-size:.76rem;font-weight:700;color:var(--ink-2);letter-spacing:.02em}
+.crow .was,.crow .now{display:grid;grid-template-columns:4.6rem minmax(0,1fr);gap:8px;font-size:.9rem;line-height:1.35}
+.crow .was{color:var(--ink-2)} .crow .now{font-weight:700}
+.crow .was span,.crow .now span{font-size:.72rem;font-weight:700;color:var(--ink-2);padding-top:2px}
+.srows{display:grid;gap:6px}
+.srow{display:grid;gap:2px;border-top:1px solid var(--rule);padding-top:6px}
+.srow.need{border-top-color:var(--warn)}
+.chead{display:flex;align-items:center;gap:8px}
+.chead .cn{flex:1 1 auto;min-width:0;font-weight:700;font-size:.9rem;line-height:1.2}
+.rq{font-size:.82rem;color:var(--ink-2);line-height:1.3}
+.info{width:26px;height:26px;border-radius:50%;border:1px solid var(--ink-2);background:transparent;color:var(--ink-2);font:700 .8rem/1 var(--f-body);font-style:italic;cursor:pointer;flex:none}
+.info[aria-expanded=true]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.wdef{font-size:.86rem;background:var(--accent-soft);border-radius:var(--r);padding:8px 10px}
+.bscale{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));font-size:.72rem;font-weight:700;color:var(--ink-2);line-height:1.15}
+.bscale span:nth-child(2){text-align:center}.bscale span:last-child{text-align:right}
+.cscale{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));font-size:.72rem;font-weight:700;color:var(--ink-2);line-height:1.15}
+.cscale span{text-align:center}.cscale span:first-child{text-align:left}.cscale span:last-child{text-align:right}
+.bex{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:start;font-size:.82rem;line-height:1.3;color:var(--ink-2)}
+.bv{font-size:.82rem;font-weight:700;padding:1px 8px;border-radius:999px;white-space:nowrap;color:var(--ink)}
+.bv.lo{background:var(--h-low)}.bv.mid{background:var(--h-mid)}.bv.hi{background:var(--h-high)}
+.bv.unset,.cv.unset{background:transparent;color:var(--ink-2);font-weight:400;padding-inline:0}
+.srow.need .bv.unset,.srow.need .cv.unset{color:var(--warn);font-weight:700}
+.cv{font-size:.82rem;font-weight:700;text-align:right}
+.nsb{font-size:.78rem;font-weight:700;padding:2px 8px;border-radius:999px;border:1px solid var(--rule);background:transparent;color:var(--ink-2);cursor:pointer;white-space:nowrap}
+.nsb[aria-pressed=true]{background:var(--chip);border-color:var(--chip);color:var(--chip-ink)}
+input[type=range]{width:100%;margin:0;min-height:28px;accent-color:var(--accent)}
+input[type=range].unset{accent-color:var(--ink-2)}
+input[type=range].bsl{-webkit-appearance:none;appearance:none;height:30px;background:transparent;cursor:pointer}
+.bsl::-webkit-slider-runnable-track{height:10px;border-radius:5px;background:linear-gradient(90deg,var(--s-lo),var(--s-mid),var(--s-hi))}
+.bsl::-moz-range-track{height:10px;border-radius:5px;background:linear-gradient(90deg,var(--s-lo),var(--s-mid),var(--s-hi))}
+.bsl::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:24px;height:24px;margin-top:-7px;border-radius:50%;background:var(--surface);border:3px solid var(--ink)}
+.bsl::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--surface);border:3px solid var(--ink)}
+.bsl.unset{filter:grayscale(1);opacity:.45}
+.stack{display:grid;gap:14px}
+.box{border-radius:var(--r);padding:14px 16px;display:grid;gap:10px}
+.box.ins{background:var(--accent-soft);border:1px solid var(--accent)}
+.box.ans{background:var(--surface);border:2px solid var(--ink)}
+.bl{font-size:.74rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--accent)}
+.box.ans .bl{color:var(--ink)}
+.box details{background:var(--surface);border-radius:var(--r);padding:6px 10px}
+.box details[open] summary{margin-bottom:6px}
+.sep{border:0;border-top:1px solid var(--rule);margin:2px 0}
+.rate{display:grid;gap:8px}
+.seg{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+.sb{font:700 .74rem/1.15 var(--f-body);padding:7px 2px;min-height:38px;border:1px solid var(--rule);border-radius:var(--r);background:transparent;color:var(--ink);cursor:pointer}
+.sb[aria-checked=true]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.bsl.unset::-webkit-slider-thumb{opacity:0}
+.opts.methods .opt label{flex-direction:column;align-items:flex-start;gap:3px;padding:12px 14px}
+.opts.methods .opt label b{font-size:1rem}
+.opts.methods .opt label span{font-size:.88rem}
+.bsets{display:grid;gap:8px}
+.bset{display:grid;gap:4px;border-top:1px solid var(--rule);padding-top:8px}
+.brow{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px;align-items:center;font-size:.9rem}
+.brow .chip{min-width:5.6rem}
+.prow{display:grid;gap:4px;border-top:1px solid var(--rule);padding-top:8px}
+.pn{display:flex;justify-content:space-between;gap:10px;font-weight:700;font-size:.86rem;line-height:1.2}
+.pn span:last-child{text-align:right}
+.ahp{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:3px}
+.ahp .sb{font-size:.78rem;min-height:32px;padding:4px 0}
+.wts{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;font-size:.88rem}
+.wts span:nth-child(even){text-align:right;font-weight:700}
+.bsl.unset::-moz-range-thumb{opacity:0}
+.rate .in{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.rate input[type=number]{font:700 1.2rem var(--f-body);width:7rem;color:var(--ink);background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);padding:8px 10px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:700 .82rem var(--f-body);padding:5px 10px;border-radius:999px;border:1px solid var(--rule);background:transparent;color:var(--ink);cursor:pointer}
+.chip[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+textarea{width:100%;min-height:84px;font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--rule);border-radius:var(--r);padding:10px;resize:vertical}
+.ref{display:grid;gap:4px} .ref label{font-size:.86rem;font-weight:700}
+.nav{display:flex;gap:10px;align-items:center;justify-content:space-between}
+.btn{font:700 1rem var(--f-body);padding:10px 18px;border-radius:var(--r);border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);cursor:pointer;min-height:44px;min-width:8rem}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--rule)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.err{color:var(--warn);font-size:.9rem;font-weight:700}
+.linkbtn{background:none;border:0;padding:0;color:var(--accent);text-decoration:underline;cursor:pointer;font:700 1em var(--f-body)}
+details summary{cursor:pointer;color:var(--ink-2);font-size:.86rem}
+pre{font:.75rem/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--bg);border:1px solid var(--rule);border-radius:var(--r);padding:10px;white-space:pre-wrap;word-break:break-word}
+.overlay{position:fixed;inset:0;background:var(--scrim);display:grid;place-items:center;padding:16px;z-index:10}
+.sheet{background:var(--surface);color:var(--ink);border-radius:var(--r);max-width:620px;width:100%;max-height:calc(100% - 32px);display:flex;flex-direction:column}
+.sheet header{padding:14px 18px;border-bottom:1px solid var(--rule)}
+.sheet .body{flex:1 1 auto;min-height:0;overflow-y:auto;padding:12px 18px;display:grid;gap:10px;font-size:.9rem;line-height:1.45}
+.sheet .body ul{margin:0;padding-left:1.1rem}
+.sheet footer{padding:10px 18px;border-top:1px solid var(--rule);display:flex;justify-content:flex-end}
+.btn:focus-visible,.sb:focus-visible,.linkbtn:focus-visible,.info:focus-visible,.nsb:focus-visible,.chip:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:480px){h2{font-size:1.12rem}h1{font-size:1.25rem}.btn{min-width:6.5rem}}
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <header class="mast"><h1 id="ttl"></h1><span class="pv">Preview v11 · nothing is sent</span></header>
+  <div class="bar" aria-hidden="true"><i id="prog"></i></div>
+  <div class="scroll" id="scroll"><main id="app"></main></div>
+  <footer id="foot"><div class="nav"><button class="btn ghost" id="back" type="button">Back</button><span class="err" id="err" role="status" aria-live="polite"></span><button class="btn" id="next" type="button">Next</button></div></footer>
+</div>
+<div class="overlay" id="notice" hidden><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="nt"><header><h2 id="nt">Privacy notice (draft for v11)</h2></header>
+  <div class="body" id="nbody"></div><footer><button class="btn" id="nclose" type="button">Close</button></footer></div></div>
+
+<script>
+const D = {"CATS": [{"id": "dac_ss", "group": "DAC", "name": "DAC: solid sorbent", "d": "e.g., amine sorbents regenerated with heat and vacuum", "base": {"d": "A solid-sorbent direct air capture plant on its own site, selling removal credits.", "where": "Own site with its own power and heat supply; CO₂ sent to a separate transport and storage operator", "earns": "Removal credits sold to buyers (offtake contracts or the voluntary market), plus government support (tax credits or purchase contracts) where available", "owner": "DAC company, financed as a stand-alone project", "scale": "About 100,000 t CO₂ captured per year"}, "cp": {"name": "Solid-sorbent DAC selling recovered water", "d": "The same plant condenses the water the sorbent takes up from the air together with the CO₂, and sells it.", "earns": "Removal credits and tax credits as in the baseline, plus sales of recovered water to local industrial or municipal buyers", "same": "site, capture process, CO₂ storage and owner."}, "ch": {"name": "DAC at a data centre", "d": "The same DAC units placed at a data centre, regenerated with its server waste heat (upgraded by heat pumps) and financed by the data-centre owner.", "where": "At a data centre, using its waste heat, power connection and site; CO₂ sent to a separate storage operator", "earns": "Removal credits and government support as in the baseline; the heat costs less than in the baseline", "owner": "Data-centre owner, on its own balance sheet", "same": "capture process and CO₂ storage."}, "ex": {"TEC": "e.g., the sorbent captures less CO₂, degrades faster, or the plant uses more energy than designed.", "PRI": "e.g., removal credit prices fall below the level the project needs as cheaper durable removals compete.", "POL": "e.g., a tax credit or government purchase programme for DAC removals is cut, ended or its eligibility rules change.", "CUR": "e.g., enough low-carbon power and heat, or CO₂ storage capacity, is not available on time or becomes much more expensive.", "CON": "e.g., contactors, sorbent, the storage connection or set-up cost more than planned.", "CPT": "e.g., a large corporate credit buyer the project depends on cancels or scales back its offtake agreement.", "SOC": "e.g., a CO₂ storage permit or pipeline permit is refused or delayed, or residents or landowners oppose the CO₂ pipeline or storage wells, or the plant’s power demand."}}, {"id": "dac_ls", "group": "DAC", "name": "DAC: liquid solvent", "d": "e.g., hydroxide solvent with a high-temperature calcium loop", "base": {"d": "A liquid-solvent direct air capture plant on its own site, selling removal credits.", "where": "Own site; CO₂ sent to a separate transport and storage operator", "earns": "Removal credits sold to buyers (offtake contracts or the voluntary market), plus government support (tax credits or purchase contracts) where available", "owner": "DAC company, financed as a stand-alone project", "scale": "About 500,000 t CO₂ captured per year"}, "ch": {"name": "DAC at an oil and gas company’s storage site", "d": "The same plant built by an oil and gas company next to its own CO₂ storage wells and financed on its balance sheet.", "where": "On the company’s land, next to its own CO₂ storage wells and pipelines", "earns": "Removal credits and tax credits as in the baseline; no fee paid to a storage operator", "owner": "Oil and gas company, on its own balance sheet", "same": "capture process."}, "ex": {"TEC": "e.g., the solvent loop or calciner underperforms, or one failure stops the whole plant.", "PRI": "e.g., removal credit prices fall below the level the project needs as cheaper durable removals compete.", "POL": "e.g., a tax credit or government purchase programme for DAC removals is cut, ended or its eligibility rules change.", "CUR": "e.g., low-carbon power and gas for the calciner, or CO₂ storage capacity, are not available on time or at the planned price.", "CON": "e.g., the large integrated plant, its calciner and the storage connection cost more than planned.", "CPT": "e.g., a large corporate credit buyer the project depends on cancels or scales back its offtake agreement.", "SOC": "e.g., a CO₂ storage permit or the plant’s water permit is refused or delayed, or residents or landowners oppose the CO₂ pipeline or storage wells, or the large plant’s water use."}}, {"id": "dac_ec", "group": "DAC", "name": "DAC: electrochemical", "d": "e.g., redox carriers or pH swing driven by electricity", "base": {"d": "An electrochemical direct air capture plant on its own site, selling removal credits.", "where": "Own site; CO₂ sent to a separate transport and storage operator", "earns": "Removal credits sold to buyers (offtake contracts or the voluntary market), plus government support (tax credits or purchase contracts) where available", "owner": "DAC company, financed as a stand-alone project", "scale": "About 50,000 t CO₂ captured per year"}, "ex": {"TEC": "e.g., the capture chemistry degrades in air, or electrodes and membranes wear out, so capture falls or power use rises.", "PRI": "e.g., removal credit prices fall below the level the project needs as cheaper durable removals compete.", "POL": "e.g., a tax credit or government purchase programme for DAC removals is cut, ended or its eligibility rules change.", "CUR": "e.g., enough low-carbon power, or electrodes and membranes made at scale, are not available on time or become much more expensive.", "CON": "e.g., first-of-a-kind electrochemical stacks, membranes and plant set-up cost more than planned.", "CPT": "e.g., a large corporate credit buyer the project depends on cancels or scales back its offtake agreement.", "SOC": "e.g., a CO₂ storage permit or pipeline permit is refused or delayed, or residents or landowners oppose the CO₂ pipeline or storage wells, or the plant’s power demand."}}, {"id": "beccs", "group": "Biomass", "name": "BECCS", "d": "e.g., biomass power or biomethane plants with CO₂ capture", "base": {"d": "A biomass power plant with a capture unit, built, owned and financed by the power company itself.", "where": "The company’s own biomass power plant; CO₂ piped or shipped to geological storage", "earns": "Electricity sales (for example under a government price contract), plus removal credits for the CO₂ stored", "owner": "Power company, on its own balance sheet", "scale": "About 500,000 t CO₂ captured per year"}, "cp": {"name": "Biomass plant also selling heat", "d": "The same plant runs as combined heat and power and also sells heat to a district heating network (as planned in Stockholm).", "earns": "Electricity sales and removal credits as in the baseline, plus heat sold to the district heating company", "same": "biomass supply, capture unit, CO₂ storage, owner and finance."}, "ex": {"TEC": "e.g., the capture unit on the flue gas captures less, its solvent degrades faster, or it cuts power output more than designed.", "PRI": "e.g., removal credit prices fall below the level the project needs as large buyers slow their purchases.", "POL": "e.g., the government’s support contract for power and removals is cut, delayed or given stricter biomass conditions.", "CUR": "e.g., the CO₂ pipeline and storage site are not ready on time, or sustainable wood pellets become scarce or much dearer.", "CON": "e.g., the capture unit and storage connection cost more than planned.", "CPT": "e.g., a major removal credit buyer cuts or cancels its long-term purchase, or a main pellet supplier goes bankrupt.", "SOC": "e.g., planning consent for the capture plant or CO₂ pipeline is delayed or challenged in court, or environmental groups campaign against the plant’s forest biomass sourcing, pressing buyers, investors and government to drop it."}}, {"id": "biochar", "group": "Biomass", "name": "Biochar", "d": "e.g., pyrolysis of crop or forestry residues", "base": {"d": "A pyrolysis plant buys crop or forestry residues, makes biochar and applies it to soil; its surplus heat is not used.", "where": "Own industrial site; residues trucked in", "earns": "Removal credits only", "owner": "Biochar company, financed as a stand-alone project", "scale": "About 20,000 t biochar per year (about 50,000 t CO₂ stored)"}, "cp": {"name": "Biochar plant selling heat", "d": "The same plant burns its pyrolysis gas and sells the heat to a district heating network (as in Stockholm and Tampere).", "where": "Own industrial site next to a district heating network; residues trucked in", "earns": "Removal credits, plus heat sold to the district heating company", "same": "feedstock, pyrolysis process, biochar end use and owner."}, "ch": {"name": "Biochar at a wastewater plant", "d": "A pyrolysis unit inside a wastewater treatment plant turns the plant’s sewage sludge into biochar, which is used in construction materials; the water utility owns it.", "where": "Inside an operating wastewater treatment plant, sharing its site, sludge drying, staff and permit", "earns": "Removal credits, plus the sludge-disposal cost the utility avoids", "owner": "Water utility, on its own balance sheet", "same": "pyrolysis process.", "note": "The feedstock changes from residues to sewage sludge. Sludge biochar may not be spread on soil in the EU and some US states, so it goes into construction materials; crediting of this route is not yet established."}, "ex": {"TEC": "e.g., the pyrolysis unit produces less biochar or breaks down more often.", "PRI": "e.g., removal credit prices fall below the level the project needs as new supply enters the market.", "POL": "e.g., a rule on what counts as durable storage changes, shutting biochar out of compliance schemes such as emissions trading.", "CUR": "e.g., enough suitable residues cannot be secured year-round, or their price rises as bioenergy plants compete for them.", "CON": "e.g., the pyrolysis plant and feedstock handling cost more than planned.", "CPT": "e.g., a credit buyer or feedstock supplier pulls out.", "SOC": "e.g., the plant’s emissions permit is delayed, or waste rules limit how much biochar may be spread on land, or neighbours object to smoke, smell or truck traffic."}}, {"id": "erw", "group": "Rock", "name": "Enhanced rock weathering", "d": "e.g., crushed basalt spread on farmland", "base": {"d": "Crushed basalt spread on farmland; farmers gain yield and liming benefits.", "where": "Farmland, using farm-supply channels and spreading contractors", "earns": "Removal credits; farmers may pay part of the rock cost in return for the yield benefit", "owner": "Rock-weathering company", "scale": "About 200,000 t crushed rock spread per year"}, "ex": {"TEC": "e.g., the rock weathers more slowly in the field than modelled, so less CO₂ is removed per tonne spread.", "PRI": "e.g., removal credit prices fall below the level the project needs, or farmers pay less towards the rock.", "POL": "e.g., public purchasing or compliance-market eligibility the business case assumes is cut, delayed or excludes rock weathering.", "CUR": "e.g., enough suitable basalt, ground fine enough, cannot be sourced near the fields, so haulage distances and costs rise.", "CON": "e.g., the soil baseline sampling, trial plots and first rock application needed before credits are issued cost more than planned.", "CPT": "e.g., the main credit buyer cancels, reduces or does not renew its purchase agreement.", "SOC": "e.g., regulators classify the rock dust as waste or set metal limits that restrict spreading it on farmland, or farmers or neighbours worry about dust or metals in the soil."}}, {"id": "cew", "group": "Ocean", "name": "OAE: coastal enhanced weathering", "d": "e.g., olivine sand placed on beaches", "base": {"d": "A developer buys olivine sand and places it on a beach or nearshore, paid only by removal credits.", "where": "Coastal site, using the developer’s own contractors and marine permit", "earns": "Removal credits only", "owner": "Developer, financed as a stand-alone project", "scale": "About 100,000 t olivine placed per year"}, "ch": {"name": "Coastal weathering hosted by a beach-nourishment programme", "d": "A council that already rebuilds its beaches with bought sand hosts the project: olivine replaces part of that sand and is placed by the council’s own contractors under the programme’s permit.", "where": "The council’s existing beach-nourishment programme: its contractors, dredging fleet, placement schedule and permit", "earns": "Removal credits, plus the council’s payment for the sand the olivine replaces", "owner": "Developer supplies the olivine; the council pays for placement as part of its programme", "same": "olivine, amount placed and how removal is measured."}, "ex": {"TEC": "e.g., olivine dissolves more slowly in the sediment than modelled, or secondary minerals consume the alkalinity, so less CO₂ is removed.", "PRI": "e.g., prices for ocean-based removal credits fall below the level the project needs.", "POL": "e.g., public purchasing or compliance-market eligibility the business case assumes is cut, delayed or excludes ocean-based removals.", "CUR": "e.g., olivine ground to the specified size is scarce, or shipping it from distant mines becomes much more expensive.", "CON": "e.g., permitting studies, baseline surveys and the first olivine purchase and placement cost more than planned before credits are issued.", "CPT": "e.g., the main credit buyer cancels, reduces or does not renew its purchase agreement.", "SOC": "e.g., a marine placement permit is refused or delayed, or permits are limited to non-commercial research under London Protocol rules, or residents, fishers or environmental groups object to placing olivine, citing nickel release or harm to marine life."}}, {"id": "oae_ec", "group": "Ocean", "name": "OAE: electrochemical", "d": "e.g., seawater split into acid and alkali", "base": {"d": "An electrochemical plant on its own coastal site splits seawater into acid and alkali and returns the alkali to the sea.", "where": "Own coastal site with its own intake, outfall and power connection", "earns": "Removal credits only; the acid is neutralised with crushed silicate rock at a cost", "owner": "Project company, financed as a stand-alone project", "scale": "About 50,000 t CO₂ removed per year"}, "cp": {"name": "Electrochemical OAE selling its acid", "d": "The same plant sells the hydrochloric acid to industrial buyers instead of neutralising it.", "earns": "Removal credits, plus hydrochloric acid sold to industrial buyers", "same": "site, process, owner and alkalinity released to sea."}, "ch": {"name": "Electrochemical OAE at a desalination plant", "d": "The same module inside an operating desalination plant, treating its leftover brine with the plant’s intake, outfall and power; the water authority finances it.", "where": "Operating desalination plant: its intake, outfall, power connection and discharge permit", "earns": "Removal credits only; the acid is neutralised as in the baseline", "owner": "Water authority, on its own balance sheet", "same": "electrochemical process, alkalinity released to sea and measurement.", "note": "The module treats brine instead of fresh seawater; the brine is softened first."}, "ex": {"TEC": "e.g., stacks and membranes scale, foul or wear out faster than designed, raising energy use per tonne.", "PRI": "e.g., removal credit prices fall below the level the project needs to cover its costs.", "POL": "e.g., planned government purchases, or the expected inclusion of ocean alkalinity in carbon removal schemes, are cut or delayed.", "CUR": "e.g., enough low-carbon electricity cannot be secured at the planned price, or the grid connection arrives late.", "CON": "e.g., the electrochemical plant, intake and outfall cost more than planned.", "CPT": "e.g., a credit buyer pulls out.", "SOC": "e.g., the discharge permit is refused or delayed, or caps the alkaline discharge below the planned volume, or fishers, residents or environmental groups oppose the discharge."}}, {"id": "oae_min", "group": "Ocean", "name": "OAE: mineral alkalinity", "d": "e.g., lime or Mg(OH)₂ added to seawater", "base": {"d": "Magnesium hydroxide dosed into the sea through a purpose-built outfall.", "where": "New dosing plant and outfall, with its own discharge permit", "earns": "Removal credits only", "owner": "Project company, financed as a stand-alone project", "scale": "About 50,000 t CO₂ removed per year"}, "ch": {"name": "Mineral alkalinity at a wastewater outfall", "d": "The same mineral added to treated effluent at an operating wastewater plant and released through its outfall under the utility’s permit.", "where": "Operating wastewater plant: its outfall, effluent flow and discharge permit", "earns": "Removal credits only, as in the baseline", "owner": "Water utility, on its own balance sheet", "same": "mineral, dose and measurement."}, "ex": {"TEC": "e.g., the mineral dissolves too slowly or triggers carbonate precipitation, so less CO₂ is taken up than designed.", "PRI": "e.g., removal credit prices fall below the level the project needs to cover its costs.", "POL": "e.g., planned government purchases, or the expected inclusion of ocean alkalinity in carbon removal schemes, are cut or delayed.", "CUR": "e.g., magnesium hydroxide of the right purity and reactivity cannot be sourced in volume, or its price rises sharply.", "CON": "e.g., the new outfall, dosing plant and required pre-start environmental baseline surveys cost more than planned.", "CPT": "e.g., a credit buyer or the mineral supplier pulls out.", "SOC": "e.g., the discharge permit for the new outfall is refused, delayed or limited to a short trial, or fishers, residents or environmental groups oppose the discharge."}}, {"id": "ccs_pow", "group": "CCS", "name": "CCS: power generation", "d": "e.g., capture at a gas power plant", "stage": "The company’s first capture unit of this design (similar units already operate elsewhere); investment decision in 2027", "base": {"d": "A power company fits a capture unit to its own gas power plant, finances it itself and sends the CO₂ to geological storage.", "where": "The company’s own gas power plant; CO₂ piped to a saline storage site", "earns": "Electricity sales, plus avoided carbon costs or payments per tonne stored (emissions trading, a tax credit or a government contract)", "owner": "Power company, on its own balance sheet", "scale": "A gas power plant of about 800 MW, capturing about 2 million t CO₂ per year"}, "cp": {"name": "Power-plant CCS selling CO₂ for oil recovery", "d": "The same plant sells its CO₂ to a nearby oil field, which stores it while producing more oil.", "where": "The company’s own gas power plant; CO₂ piped to a nearby oil field", "earns": "Electricity sales and payments per tonne stored, plus CO₂ sales to the oil-field operator", "same": "capture unit, owner and finance."}, "ex": {"TEC": "e.g., the capture unit is out of service more often or captures less CO₂ than designed, especially with frequent start-ups.", "PRI": "e.g., carbon prices fall below the level that pays for capture, or lower power prices mean the plant runs less.", "POL": "e.g., government support for capture, such as a government price contract or a tax credit for stored CO₂, is cancelled or cut.", "CUR": "e.g., the CO₂ pipeline and storage network is not ready when capture starts, or goes out of service.", "CON": "e.g., the capture plant and its integration with the power station cost more than planned, for example through construction delays.", "CPT": "e.g., the CO₂ transport and storage company or a project partner pulls out of its contract or fails to pay.", "SOC": "e.g., the CO₂ storage permit or the plant’s planning consent is delayed, challenged in court or refused, or campaigners challenge the plant as prolonging fossil gas use, or landowners oppose the CO₂ pipeline route."}}, {"id": "ccs_ind", "group": "CCS", "name": "CCS: industry", "d": "e.g., cement, steel or chemicals (here a cement works)", "stage": "The company’s first capture unit of this design (similar units already operate elsewhere); investment decision in 2027", "base": {"d": "A cement company fits a capture unit to its own cement works, finances it itself and sends the CO₂ to geological storage.", "where": "The company’s own cement works; CO₂ piped or shipped to geological storage", "earns": "Cement sales, plus avoided carbon costs or payments per tonne stored (emissions trading or a government contract)", "owner": "Cement company, on its own balance sheet", "scale": "A cement works capturing about 400,000 t CO₂ per year"}, "cp": {"name": "Industrial CCS selling CO₂ into concrete", "d": "About 5% of the captured CO₂ is sold to plants that carbonate recycled concrete aggregate, binding it permanently; the rest goes to geological storage as in the baseline.", "earns": "Cement sales and payments per tonne stored, plus CO₂ sales for aggregate carbonation (a small share of revenue)", "same": "capture unit, owner and finance, and geological storage for most of the CO₂."}, "ex": {"TEC": "e.g., the capture unit captures less CO₂ or uses more energy than designed, for example as kiln-gas impurities degrade the solvent.", "PRI": "e.g., carbon prices fall below the level that pays for capture, or buyers will not pay extra for low-carbon cement.", "POL": "e.g., emissions trading is weakened, for example free allowances for cement are extended or the cap is tightened more slowly.", "CUR": "e.g., the CO₂ pipeline, shipping or storage service is not ready when capture starts, or goes out of service.", "CON": "e.g., the capture plant and its integration into the existing works cost more than planned, for example through construction delays.", "CPT": "e.g., the CO₂ shipping or storage company pulls out of its contract or goes out of business.", "SOC": "e.g., permits to pipe, export or store the CO₂ are delayed or refused, or national law does not yet allow them, or residents object to the pipeline or the storage site."}}], "RISKS": [{"id": "TEC", "name": "Technology risk", "q": "The technology performs worse than designed", "def": "Performance once running: the equipment or process captures or removes less CO₂, uses more energy, wears out sooner or breaks down more often than designed. This includes removal that cannot be measured or verified to the certifier’s standard, or a certifier changing its method, so fewer credits are issued. Cost overruns before operation are cost risk."}, {"id": "PRI", "name": "Price risk", "q": "Prices received are lower or more volatile than planned", "def": "The price received per tonne of CO₂ removed or stored, or for co-products and services, is lower than planned or varies more than expected, or buyers take smaller volumes than planned."}, {"id": "POL", "name": "Policy risk", "q": "Government support is cut or changed", "def": "Governments cut or change the subsidies, tax credits or support schemes the project depends on."}, {"id": "CUR", "name": "Supply chain risk", "q": "Inputs or logistics are not available when needed", "def": "Feedstock, materials, energy, equipment or CO₂ transport and storage are not available on time, in the quantity or quality needed, or become much more expensive. A contract party pulling out is counterparty risk."}, {"id": "CON", "name": "Cost and schedule risk", "q": "Upfront costs are higher, or construction takes longer, than expected", "def": "Spending needed before the first revenue (equipment, site work, development) ends up higher than expected, or construction and commissioning take longer, so the first revenue comes later."}, {"id": "CPT", "name": "Counterparty risk", "q": "A buyer or partner does not pay or pulls out", "def": "A contract party does not pay or pulls out. Buyer: a company that has agreed to buy the removal credits or co-products (offtaker); a project that relies on one or two large buyers is more exposed. Partner: a company the project relies on, e.g., the host site (which may also shut down or cut its supply), or a feedstock or energy supplier."}, {"id": "SOC", "name": "Permitting and acceptance risk", "q": "Permits are refused or delayed, or people oppose the project", "def": "Permits, licences or approvals the project needs are refused, delayed or withdrawn, or the rules on how it must operate change; or local communities, landowners or interest groups oppose the project, which slows or stops it."}], "EXP": ["Under 2 years", "2–5 years", "6–10 years", "Over 10 years"]};
+const T = {"version": "v11 draft, 29 Oct 2026 (revised after expert reviews)", "notice_version": "2026-11-draft-v11", "title": "Carbon removal risk survey", "intro": {"heading": "Why we are doing this", "body": "At GHGT-18, investment risk came up as a key barrier to scaling up carbon dioxide removal. We study how co-products or shared sites change that risk, and the cost of capital, whether up or down. Your ratings are the data.", "who": "Dr Reinaldo Lee Pereira (Heriot-Watt University, UK) and Dr Mak Đukan (Forschungszentrum Jülich, Germany)", "time": "5–7 minutes", "data": "We do not ask for your name. Results are published only in aggregate.", "contacts": ["r.lee_pereira@hw.ac.uk", "m.dukan@fz-juelich.de"], "consent": "I have read the privacy notice. I am 18 or over, I take part voluntarily, and I agree that my answers are used for this research. I can withdraw my consent at any time by quoting the response number shown at the end."}, "roles": ["Lender or credit analyst", "Equity investor (infrastructure, private equity or venture)", "Financial adviser or analyst", "Project developer or engineer", "Researcher", "Government, policy or NGO", "Other"], "role_q": "What is your main role?", "exp_q": "How many years have you worked in carbon removal or carbon capture and storage?", "known_q": "Which technologies do you know well?", "known_hint": "Tick all that apply.", "best_q": "Which one do you know best?", "how_q": "How do you know this technology?", "how": ["Read about it", "Assessed or modelled it", "Developed, financed or operated one"], "stage": "The developer’s first commercial-scale plant of this design; investment decision in 2027", "variant_def": {"cp": "Co-product: a second product or service sold besides removal credits.", "ch": "Co-host: an existing facility the project is built into, sharing its site, inputs or permits; often owned by the host."}, "ins_label": "Instructions", "ans_label": "Your answers", "project_again": "Show the project description again", "sa_title": "You will evaluate the risk of this technology and scenario", "sa_next": "Read the description below first. On the next pages you rate seven risks for this project and give a discount rate.", "cmp_next": "Read what changes first. On the next pages you say how each risk compares with the baseline and give a discount rate for this version. The scale is the same as the baseline unless stated.", "rate_head": "Discount rate", "base_q": "How large do you think each risk is?", "base_hint": "Think about how likely problems are over the project's life and how much they would cost. Risks appear in random order. Tap i for a definition.", "rate_q": "What discount rate would you expect the owner to apply to this project’s cash flows?", "rate_q_variant": "What discount rate would you expect the owner to apply to this version?", "rate_help": "The after-tax, nominal weighted average cost of capital (WACC) for this project, financed as described: by a project company, or on the owner’s balance sheet. If the owner would use its company-wide rate, give that rate. Take the risk-free rate as the current 10-year government bond yield of the country you have in mind.", "rate_echo": "Your baseline answer: {x}%. Enter the same value if nothing changes.", "basis_q": "Your number is a", "basis": ["WACC", "Equity hurdle rate", "Cost of debt", "Other"], "wind_q": "For comparison: what rate would you use for a contracted onshore wind farm in the same country?", "cant_judge": "Can't judge", "cmp_q": {"cp": "Compared with the baseline, is each risk lower, the same or higher in this version?", "ch": "Compared with the baseline, is each risk lower, the same or higher in this version?"}, "cmp_hint": "For the whole project. Choose Same where this version makes no difference, and Can’t judge if you cannot say.", "fin_row": {"id": "FIN", "name": "Host financing (apart from the risks above)", "q": "Apart from the risks above, does financing by the host change the project’s cost of debt and equity: for example through the host’s credit rating, recourse to its balance sheet, its tax position or the type of investor?", "def": "Only for co-hosted versions. For example, a utility financing the project on its own balance sheet at its own credit rating. Revenue contracts belong under price and counterparty risk, not here."}, "review_q": "Ready to submit?", "done_q": "Thank you for your time!", "done_offers": "In the live survey you can also offer a short interview or ask for an early copy of the results.", "notice_collect": ["the time you gave consent and the version of this notice", "your main role and years of experience", "the technologies you know well, the one you know best, and how you know the technology you rate", "your risk ratings, the discount rates you give, what kind of rate they are, who you assume finances the project and the country you have in mind", "which technology and version you were shown, the order of the risks and the order of the pages", "the time spent on each screen", "your optional comment", "a random response number, shown at the end, that you can quote to withdraw"], "notice_rest": "The rest of the notice (joint controllers, legal bases, storage in Google Sheets then Dropbox, transfers, retention for 3 years, your rights and contacts) is unchanged from version 2026-10-28c.", "country": "A high-income country with a price or tax credit for stored CO₂ and a CO₂ storage permitting regime, such as the US, the UK or an EU country", "rate_ns": "I would not estimate this rate", "finby_q": "Who do you assume finances it?", "finby": ["A project company (non-recourse)", "The owner, on its balance sheet", "Not sure"], "country_q": "Country you have in mind", "countries": ["US", "UK", "EU or EEA", "Other"], "review": {"tag": "Review mode", "method_q": "Which survey format do you want to review?", "method_note": "For colleagues reviewing the design. The three formats ask the same project description and the same discount-rate questions; they differ in how the seven risks are answered. Nothing is sent. Times are estimates.", "options": [{"id": "sliders", "name": "Sliders + rate (v11, proposed)", "how": "Rate each risk 0–10 for the baseline, then lower, the same or higher for the version.", "items": "14 risk questions", "time": "about 5–7 minutes", "sim": "Simulated error per risk: change 0.21 pp, baseline split 0.53 pp"}, {"id": "bws", "name": "Sliders + best–worst + rate", "how": "As v11, plus 7 sets of 3 risks for the baseline: pick the largest and the smallest in each set.", "items": "28 risk questions", "time": "about 7–9 minutes", "sim": "Simulated error per risk: change 0.21 pp, baseline split 0.41 pp"}, {"id": "ahp", "name": "AHP + rate", "how": "Compare the risks two at a time (21 pairs), for the baseline and again for the version: which is larger, and by how much.", "items": "42 risk questions", "time": "about 10–14 minutes", "sim": "Simulated error per risk: change 0.36 pp, baseline split 0.37 pp"}], "again": "Review another format", "bws_q": "In each set, which risk is the largest for this project, and which is the smallest?", "bws_hint": "Seven sets of three; each risk appears in three sets. Pick one Largest and one Smallest in each set.", "ahp_q": {"base": "Which risk is larger for this project, and by how much?", "var": "In this version, which risk is larger, and by how much?"}, "ahp_hint": "21 pairs in random order. Tap towards the larger risk: 3 moderately, 5 strongly, 7 very strongly, 9 extremely larger; tap = if they are about the same.", "ahp_cr": "Consistency ratio of your answers: {x} (below 0.10 is the usual threshold)."}};
+const RISK = D.RISKS, CB = Object.fromEntries(D.CATS.map(c => [c.id, c]));
+const CHG = ['Much lower', 'Lower', 'Same', 'Higher', 'Much higher'];
+const PLAB = {cp:'Co-product', ch:'Co-host'};
+const ROWS = [['where', 'Site and infrastructure'], ['owner', 'Owner and finance']];
+// Preview only: example counts of answers so far per cell (12 variant cells and 2 baseline-only technologies).
+const DEMO_COUNTS = {'dac_ss:cp':6,'dac_ss:ch':7,'dac_ls:ch':4,'dac_ec:sa':2,'beccs:cp':5,'biochar:cp':3,'biochar:ch':5,'erw:sa':3,'cew:ch':2,'oae_ec:cp':2,'oae_ec:ch':3,'oae_min:ch':1,'ccs_pow:cp':4,'ccs_ind:cp':3};
+const BEST_BONUS = 1;
+
+const REVIEW = true;   // review build: a page to pick the answer format for comparison
+const rid = 'r-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+const S = {step:'intro', consent:false, consentAt:null, role:null, exp:null, known:[], best:null, tech:null, v:null, how:null,
+  base:{}, rate:{}, wind:{}, basis:null, chg:{}, vrate:{}, finby:{rate:null, vrate:null}, country:null, comment:'', warned:false, done:false, second:false, records:[],
+  order: shuffle(RISK.map(r => r.id)), numFirst: Math.random() < 0.5, t:{}, tIn:Date.now(),
+  fmt: REVIEW ? null : 'sliders', bws:{}, ahp:{base:{}, var:{}}};
+// AHP: all 21 pairs of the 7 risks, in random order and with random sides; best-worst: 7 sets of 3 (each pair once)
+S.pairs = shuffle(S.order.flatMap((a, i) => S.order.slice(i + 1).map(b => Math.random() < 0.5 ? [a, b] : [b, a])));
+const FANO = [[0,1,2],[0,3,4],[0,5,6],[1,3,5],[1,4,6],[2,3,6],[2,4,5]];
+S.sets = shuffle(FANO).map(t => shuffle(t.map(k => S.order[k])));
+const SAATY = [9, 7, 5, 3, 1, 3, 5, 7, 9];
+function shuffle(a){ a = a.slice(); for (let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const variants = t => ['cp','ch'].filter(v => CB[t] && CB[t][v]);
+// One question per "About you" page; each part has a reading page (the project), a rating page and a rate page.
+const partPages = p => {
+  const risk = p === 'sa' ? (S.fmt === 'ahp' ? ['sa_ahp'] : S.fmt === 'bws' ? ['sa_rate', 'sa_bws'] : ['sa_rate'])
+                          : (S.fmt === 'ahp' ? ['cmp_ahp'] : ['cmp_rate']);
+  return S.numFirst ? [p + '_num'].concat(risk) : risk.concat([p + '_num']);
+};
+const steps = () => ['intro'].concat(REVIEW ? ['method'] : []).concat(['role','exp','known']).concat(S.known.length > 1 ? ['best'] : [])
+  .concat(['sa_card'].concat(partPages('sa')))
+  .concat(S.tech && !S.v ? [] : ['cmp_card'].concat(partPages('cmp'))).concat(['review']);
+const fmtName = () => (T.review.options.find(o => o.id === S.fmt) || {}).name || '';
+// AHP weights (geometric mean of rows) and consistency ratio for answers {'A|B': signed Saaty value, + = A larger}
+function ahpWeights(ans){
+  const ids = S.order, n = ids.length, A = ids.map(() => ids.map(() => 1));
+  let k = 0;
+  S.pairs.forEach(([a, b]) => { const v = ans[a + '|' + b]; if (v == null) return; k++;
+    const r = v > 0 ? v : 1 / -v, i = ids.indexOf(a), j = ids.indexOf(b); A[i][j] = r; A[j][i] = 1 / r; });
+  if (k < S.pairs.length) return null;
+  const g = A.map(row => Math.exp(row.reduce((s, x) => s + Math.log(x), 0) / n)), sum = g.reduce((s, x) => s + x, 0), w = g.map(x => x / sum);
+  const lmax = A.map((row, i) => row.reduce((s, x, j) => s + x * w[j], 0) / w[i]).reduce((s, x) => s + x, 0) / n;
+  return {w:Object.fromEntries(ids.map((id, i) => [id, w[i]])), cr:(lmax - n) / (n - 1) / 1.32};
+}
+const bwsScores = () => Object.fromEntries(S.order.map(id => [id, S.sets.reduce((s, set, i) => s + (S.bws[i]?.b === id ? 1 : 0) - (S.bws[i]?.w === id ? 1 : 0), 0)]));
+// The rate page comes before or after the rating page at random (same order in both parts), and the order is recorded.
+// The host-financing row is asked only for co-hosted versions.
+const cmpIds = () => S.order.concat(S.v === 'ch' ? ['FIN'] : []);
+const nYou = () => S.known.length > 1 ? 4 : 3;
+const part1 = () => S.v ? 'Part 1 · Baseline' : 'Baseline';
+const part2 = () => `Part 2 · ${PLAB[S.v]}${S.second ? ' (second version)' : ''}`;
+const band = x => x <= 3 ? 'lo' : x <= 6 ? 'mid' : 'hi';
+const NEW = '<span class="new">New</span>';
+const finRow = () => ({id:'FIN', name:T.fin_row.name, q:T.fin_row.q, def:T.fin_row.def});
+const R = id => id === 'FIN' ? finRow() : RISK.find(r => r.id === id);
+
+// Allocation: among the cells of the technologies ticked (variant cells, or the baseline for technologies
+// without a variant), the one with the fewest answers, preferring the best-known technology by BEST_BONUS.
+function allocate(){
+  const best = S.best && S.known.includes(S.best) ? S.best : S.known[0];
+  const opts = [];
+  S.known.forEach(t => (variants(t).length ? variants(t) : [null]).forEach(v =>
+    opts.push({t, v, score:(DEMO_COUNTS[t + ':' + (v || 'sa')] ?? 0) - (t === best ? BEST_BONUS : 0)})));
+  if (!opts.length) return null;
+  opts.sort((a, b) => a.score - b.score);
+  return opts[0];
+}
+
+// Two boxes on every answer page: the instructions (tinted) and the answers (outlined).
+const insBox = (label, inner, full) => `<section class="box ins" aria-label="${esc(T.ins_label)}"><span class="bl">${esc(full ? label : label + ' · ' + T.ins_label)}</span>${inner}</section>`;
+const ansBox = inner => `<section class="box ans" aria-label="${esc(T.ans_label)}"><span class="bl">${esc(T.ans_label)}</span>${inner}</section>`;
+const baseFacts = c => `<dl class="facts"><div><dt>Site and infrastructure</dt><dd>${esc(c.base.where)}</dd></div><div><dt>Revenue</dt><dd>${esc(c.base.earns)}</dd></div><div><dt>Owner and finance</dt><dd>${esc(c.base.owner)}</dd></div><div><dt>Scale ${NEW}</dt><dd>${esc(c.base.scale)}</dd></div><div><dt>Stage ${NEW}</dt><dd>${esc(c.stage || T.stage)}</dd></div><div><dt>Country ${NEW}</dt><dd>${esc(T.country)}</dd></div></dl>`;
+const summary = (name, d) => `<p class="small"><b>${esc(name)}.</b> ${esc(d)}</p>`;
+function variantFacts(c){
+  const b = c.base, v = c[S.v], changed = ROWS.filter(([k]) => v[k] && v[k] !== b[k]);
+  return `${changed.length ? `<div class="cmp"><span class="tag">What changes from the baseline</span>${changed.map(([k, l]) => `<div class="crow"><div class="cl">${l}</div><div class="was"><span>Baseline</span><div>${esc(b[k])}</div></div><div class="now"><span>${PLAB[S.v]}</span><div>${esc(v[k])}</div></div></div>`).join('')}</div>` : ''}
+    ${v.note ? `<p class="small"><b>Note:</b> ${esc(v.note)}</p>` : ''}
+    <div class="def"><b>Where the revenue comes from</b><span>${esc(v.earns || b.earns)}</span></div>
+    ${v.same ? `<p class="small"><b>Same as the baseline:</b> ${esc(v.same)}</p>` : ''}`;
+}
+const again = (title, inner) => `<details><summary>${esc(T.project_again)}: ${esc(title)}</summary>${inner}</details>`;
+
+const chips = (q, opts, sel, attr) => `<div class="row" style="justify-content:flex-start"><span class="small muted">${esc(q)} ${NEW}</span><div class="chips" role="group" aria-label="${esc(q)}">${opts.map((b, i) => `<button type="button" class="chip" ${attr} data-i="${i}" aria-pressed="${sel === i}">${esc(b)}</button>`).join('')}</div></div>`;
+function rateAnswers(store, variant){
+  const o = S[store];
+  const input = (st, label) => S[st].ns ? '' : `<input type="number" inputmode="decimal" min="0.5" max="60" step="0.5" id="r-${st}" value="${S[st].best ?? ''}" aria-label="${esc(label)}, % per year"><span class="muted">% per year</span>`;
+  return `<div class="rate" id="blk-${store}">
+    <h3>${esc(variant ? T.rate_q_variant : T.rate_q)} ${NEW}</h3>
+    <div class="in">${input(store, variant ? T.rate_q_variant : T.rate_q)}<button type="button" class="nsb" id="ns-${store}" aria-pressed="${!!o.ns}">${esc(T.rate_ns)}</button></div>
+    ${chips(T.finby_q, T.finby, S.finby[store], `data-finby="${store}"`)}
+    ${variant ? '' : `${chips(T.basis_q, T.basis, S.basis, 'data-basis="1"')}${chips(T.country_q, T.countries, S.country, 'data-country="1"')}
+    <hr class="sep"><h3>${esc(T.wind_q)}</h3>
+    <div class="in">${input('wind', T.wind_q)}<button type="button" class="nsb" id="ns-wind" aria-pressed="${!!S.wind.ns}">${esc(T.rate_ns)}</button></div>`}</div>`;
+}
+function ahpView(part){
+  const c = CB[S.tech], v = c[S.v], ans = S.ahp[part], res = ahpWeights(ans);
+  const rows = S.pairs.map(([a, b], i) => { const key = a + '|' + b, x = ans[key];
+    return `<div class="prow srow ${S.warned && x == null ? 'need' : ''}" data-row="${key}"><div class="pn"><span>${esc(R(a).name)}</span><span>${esc(R(b).name)}</span></div>
+      <div class="ahp" role="radiogroup" aria-label="${esc(R(a).name)} or ${esc(R(b).name)}, pair ${i + 1} of 21">${SAATY.map((n, j) => { const val = j < 4 ? n : j > 4 ? -n : 1;
+        return `<button type="button" class="sb" role="radio" data-pk="${key}" data-pv="${val}" aria-checked="${x === val}" aria-label="${j === 4 ? 'About the same' : (j < 4 ? R(a).name : R(b).name) + ' ' + n + ' times larger'}">${j === 4 ? '=' : n}</button>`; }).join('')}</div></div>`; }).join('');
+  const head = part === 'base'
+    ? insBox(part1(), `<h2>${esc(T.review.ahp_q.base)}</h2><p class="small">${esc(T.review.ahp_hint)}</p>${summary(c.name, c.base.d)}${again(c.name, baseFacts(c))}`)
+    : insBox(part2(), `<h2>${esc(T.review.ahp_q.var)}</h2><p class="small">${esc(T.review.ahp_hint)}</p>${summary(v.name, v.d)}${again(v.name, variantFacts(c))}`);
+  const how = part === 'base' ? `<div class="row" style="justify-content:flex-start"><span class="small"><b>${esc(T.how_q)}</b> ${NEW}</span><div class="chips" role="group" aria-label="${esc(T.how_q)}">${T.how.map((h, i) => `<button type="button" class="chip" data-how="${i}" aria-pressed="${S.how === i}">${esc(h)}</button>`).join('')}</div></div><hr class="sep">` : '';
+  return `<div class="stack">${head}${ansBox(`${how}<p class="err" id="werr" hidden></p><div class="srows">${rows}</div>
+    ${res ? `<p class="small muted">${esc(T.review.ahp_cr.replace('{x}', res.cr.toFixed(2)))}</p>` : `<p class="small muted">${Object.keys(ans).length} of 21 pairs answered.</p>`}`)}</div>`;
+}
+function riskHead(r, valHtml){
+  return `<div class="chead"><span class="cn" id="n-${r.id}">${esc(r.name)}${r.id === 'FIN' ? NEW : ''}</span>
+    <button type="button" class="info" data-i="${r.id}" aria-expanded="false" aria-controls="d-${r.id}" aria-label="What ${esc(r.name)} means">i</button>${valHtml}</div>
+    <div class="wdef" id="d-${r.id}" hidden>${esc(r.def)}</div>`;
+}
+
+const VIEW = {
+  intro: () => `<div class="card"><span class="tag part">About this survey</span>
+    <div class="intro"><h2>${esc(T.intro.heading)}</h2><p>${esc(T.intro.body)}</p></div>
+    <dl class="facts">
+      <div><dt>Who we are</dt><dd>${esc(T.intro.who)}</dd></div>
+      <div><dt>Time needed</dt><dd>${esc(T.intro.time)} ${NEW}</dd></div>
+      <div><dt>Your data</dt><dd>${esc(T.intro.data)}</dd></div>
+      <div><dt>Contact</dt><dd>${T.intro.contacts.map(c => `<span class="contact">${esc(c)}</span>`).join('<br>')}</dd></div>
+    </dl>
+    <label class="consent"><input type="checkbox" id="consent" ${S.consent ? 'checked' : ''}><span>${esc(T.intro.consent).replace('privacy notice', '<button type="button" class="linkbtn" id="pn">privacy notice</button>')}</span></label></div>`,
+
+  method: () => `<div class="card"><span class="tag part">${esc(T.review.tag)}</span>
+    <h2>${esc(T.review.method_q)}</h2><p class="small muted">${esc(T.review.method_note)}</p>
+    <div class="opts methods">${T.review.options.map(o => `<div class="opt"><input type="radio" name="fmt" id="f-${o.id}" value="${o.id}" ${S.fmt === o.id ? 'checked' : ''}><label for="f-${o.id}"><b>${esc(o.name)}</b><span>${esc(o.how)}</span><small>${esc(o.items)} · ${esc(o.time)}</small><small>${esc(o.sim)}</small></label></div>`).join('')}</div></div>`,
+
+  sa_bws: () => {
+    const c = CB[S.tech];
+    const sets = S.sets.map((set, i) => `<div class="bset srow ${S.warned && !(S.bws[i]?.b && S.bws[i]?.w) ? 'need' : ''}" data-row="set${i}"><span class="tag">Set ${i + 1} of 7</span>
+      ${set.map(id => `<div class="brow"><span>${esc(R(id).name)}</span>
+        <button type="button" class="chip" data-bset="${i}" data-bk="b" data-bid="${id}" aria-pressed="${S.bws[i]?.b === id}">Largest</button>
+        <button type="button" class="chip" data-bset="${i}" data-bk="w" data-bid="${id}" aria-pressed="${S.bws[i]?.w === id}">Smallest</button></div>`).join('')}</div>`).join('');
+    return `<div class="stack">
+    ${insBox(part1(), `<h2>${esc(T.review.bws_q)}</h2><p class="small">${esc(T.review.bws_hint)}</p>${summary(c.name, c.base.d)}${again(c.name, baseFacts(c))}`)}
+    ${ansBox(`<p class="err" id="werr" hidden></p><div class="bsets">${sets}</div>`)}</div>`;
+  },
+
+  sa_ahp: () => ahpView('base'),
+  cmp_ahp: () => ahpView('var'),
+
+  role: () => `<div class="card"><span class="tag">About you · 1 of ${nYou()}</span>
+    <h2>${esc(T.role_q)} ${NEW}</h2>
+    <div class="opts">${T.roles.map((r, i) => `<div class="opt"><input type="radio" name="role" id="role${i}" value="${i}" ${S.role === i ? 'checked' : ''}><label for="role${i}">${esc(r)}</label></div>`).join('')}</div></div>`,
+
+  exp: () => `<div class="card"><span class="tag">About you · 2 of ${nYou()}</span>
+    <h2>${esc(T.exp_q)}</h2>
+    <div class="opts">${D.EXP.map((e, i) => `<div class="opt"><input type="radio" name="exp" id="exp${i}" value="${i}" ${S.exp === i ? 'checked' : ''}><label for="exp${i}">${esc(e)}</label></div>`).join('')}</div></div>`,
+
+  known: () => `<div class="card"><span class="tag">About you · 3 of ${nYou()}</span>
+    <h2>${esc(T.known_q)} ${NEW}</h2><p class="muted small">${esc(T.known_hint)}</p>
+    <div class="opts cats">${D.CATS.map(c => `<div class="opt"><input type="checkbox" name="known" id="k-${c.id}" value="${c.id}" ${S.known.includes(c.id) ? 'checked' : ''}><label for="k-${c.id}"><span>${esc(c.name)}</span><small>${esc(c.d)}</small></label></div>`).join('')}</div></div>`,
+
+  best: () => `<div class="card"><span class="tag">About you · 4 of 4</span>
+    <h2>${esc(T.best_q)} ${NEW}</h2>
+    <div class="opts">${S.known.map(t => `<div class="opt"><input type="radio" name="best" id="b-${t}" value="${t}" ${S.best === t ? 'checked' : ''}><label for="b-${t}">${esc(CB[t].name)}</label></div>`).join('')}</div></div>`,
+
+  // Reading page: the project only, no questions.
+  sa_card: () => {
+    const c = CB[S.tech];
+    return `<div class="card"><span class="tag part">${part1()}</span>
+    <h2>${esc(T.sa_title)}</h2>
+    ${insBox(T.ins_label, `<p class="small">${esc(T.sa_next)}</p>`, true)}
+    <div class="intro"><h3>${esc(c.name)}</h3><p>${esc(c.base.d)}</p></div>
+    ${baseFacts(c)}</div>`;
+  },
+
+  sa_rate: () => {
+    const c = CB[S.tech];
+    const rows = S.order.map(id => { const k = R(id), x = S.base[id], set = typeof x === 'number';
+      return `<div class="srow ${S.warned && x === undefined ? 'need' : ''}" data-row="${id}">${riskHead(k, `<span class="bv ${set ? band(x) : 'unset'}" id="bv-${id}">${set ? x + ' / 10' : ''}</span>`)}
+        <div class="bex"><span>${esc(c.ex[id])}</span><button type="button" class="nsb" data-n="${id}" aria-pressed="${x === 'ns'}" aria-label="Not sure about ${esc(k.name.toLowerCase())}">Not sure</button></div>
+        <input type="range" min="0" max="10" step="1" value="${set ? x : 5}" data-b="${id}" class="bsl ${set ? '' : 'unset'}" aria-labelledby="n-${id}" aria-valuetext="${set ? x + ' of 10' : x === 'ns' ? 'Not sure' : 'Not set'}"></div>`; }).join('');
+    return `<div class="stack">
+    ${insBox(part1(), `<h2>${esc(T.base_q)}</h2><p class="small">${esc(T.base_hint)}</p>
+      <p class="small"><b>Scale:</b> 0 negligible · 5 moderate · 10 severe. "Not sure" is a valid answer.</p>
+      ${summary(c.name, c.base.d)}
+      ${again(c.name, baseFacts(c))}`)}
+    ${ansBox(`<div class="row" style="justify-content:flex-start"><span class="small"><b>${esc(T.how_q)}</b> ${NEW}</span><div class="chips" role="group" aria-label="${esc(T.how_q)}">${T.how.map((h, i) => `<button type="button" class="chip" data-how="${i}" aria-pressed="${S.how === i}">${esc(h)}</button>`).join('')}</div></div>
+      <hr class="sep">
+      <div class="bscale" aria-hidden="true"><span>0 · Negligible</span><span>5 · Moderate</span><span>10 · Severe</span></div>
+      <p class="err" id="werr" hidden></p>
+      <div class="srows">${rows}</div>`)}</div>`;
+  },
+
+  sa_num: () => {
+    const c = CB[S.tech];
+    return `<div class="stack">
+    ${insBox(part1(), `<h2>${esc(T.rate_head)} ${NEW}</h2><p class="small">${esc(T.rate_help)}</p>
+      ${summary(c.name, c.base.d)}
+      ${again(c.name, baseFacts(c))}`)}
+    ${ansBox(rateAnswers('rate', false))}</div>`;
+  },
+
+  cmp_card: () => {
+    const c = CB[S.tech], v = c[S.v];
+    return `<div class="card"><span class="tag part">${part2()} · The version</span>
+    <p class="small muted">${esc(T.variant_def[S.v])}</p>
+    <div class="intro"><h2>${esc(v.name)}</h2><p>${esc(v.d)}</p></div>
+    ${variantFacts(c)}
+    ${insBox('What comes next', `<p class="small">${esc(T.cmp_next)}</p>`, true)}</div>`;
+  },
+
+  cmp_rate: () => {
+    const c = CB[S.tech], v = c[S.v];
+    const own = id => typeof S.base[id] === 'number' ? `Your baseline: ${S.base[id]} / 10` : S.base[id] === 'ns' ? 'Your baseline: not sure' : '';
+    const rows = cmpIds().map(id => { const k = R(id), x = S.chg[id], set = x !== undefined;
+      return `<div class="srow ${S.warned && !set ? 'need' : ''}" data-row="${id}">${riskHead(k, `<button type="button" class="nsb" data-cn="${id}" aria-pressed="${x === 'ns'}">${esc(T.cant_judge)}</button>`)}
+        ${id === 'FIN' ? `<p class="rq">${esc(k.q)}</p>` : own(id) ? `<p class="rq">${own(id)}</p>` : ''}
+        <div class="seg" role="radiogroup" aria-labelledby="n-${id}">${CHG.map((l, j) => `<button type="button" class="sb" role="radio" data-c="${id}" data-x="${j - 2}" aria-checked="${x === j - 2}">${l}</button>`).join('')}</div></div>`; }).join('');
+    return `<div class="stack">
+    ${insBox(part2(), `<h2>${esc(T.cmp_q[S.v])}</h2><p class="small">${esc(T.cmp_hint)}</p>
+      ${summary(v.name, v.d)}
+      ${again(v.name, variantFacts(c))}`)}
+    ${ansBox(`<p class="err" id="werr" hidden></p>
+      <div class="srows">${rows}</div>`)}</div>`;
+  },
+
+  cmp_num: () => {
+    const c = CB[S.tech], v = c[S.v];
+    const echo = S.rate.best != null ? `<p class="small"><b>${esc(T.rate_echo.replace('{x}', S.rate.best))}</b></p>` : '';
+    return `<div class="stack">
+    ${insBox(part2(), `<h2>${esc(T.rate_head)} ${NEW}</h2><p class="small">${esc(T.rate_help)}</p>${echo}
+      ${summary(v.name, v.d)}
+      ${again(v.name, variantFacts(c))}`)}
+    ${ansBox(rateAnswers('vrate', true))}</div>`;
+  },
+
+  review: () => `<div class="card"><span class="tag part">Last step${REVIEW ? ' · ' + esc(fmtName()) : ''}</span><h2>${esc(T.review_q)}</h2>
+    <p class="muted small">${esc(CB[S.tech].name)} · ${S.fmt === 'ahp' ? `${Object.keys(S.ahp.base).length} of 21 baseline pairs${S.v ? ` · ${Object.keys(S.ahp.var).length} of 21 version pairs` : ''}` : `${Object.keys(S.base).length} of 7 risks rated${S.fmt === 'bws' ? ` · ${Object.keys(S.bws).length} of 7 sets` : ''}${S.v ? ` · ${PLAB[S.v].toLowerCase()}: ${Object.keys(S.chg).length} of ${cmpIds().length} rated` : ''}`}. Use Back to change an answer.</p>
+    ${REVIEW ? reviewSummary() : ''}
+    <div class="ref"><label for="comment">Comment (optional)</label><textarea id="comment" maxlength="2000">${esc(S.comment)}</textarea></div>
+    <details><summary>Record this would send (R10)</summary><pre>${esc(JSON.stringify(payload(), null, 1))}</pre></details></div>`,
+
+  done: () => {
+    return `<div class="card"><span class="tag part">Finished</span><h2>${esc(T.done_q)}</h2>
+    <p>Your response number is <b class="contact">${rid}</b>. Quote it if you want your answers withdrawn. ${NEW}</p>
+    <p class="small muted">${esc(T.done_offers)} This preview stored nothing.</p>
+    ${REVIEW ? `<button class="btn" id="another" type="button">${esc(T.review.again)}</button>` : ''}
+    <button class="btn ghost" id="restart" type="button">Start the preview again</button></div>`;
+  }
+};
+
+function reviewSummary(){
+  const share = (o, ids) => { const tot = ids.reduce((s, id) => s + Math.max(0, o[id] || 0), 0); return id => tot ? Math.max(0, o[id] || 0) / tot : null; };
+  let rows = '', note = '';
+  if (S.fmt === 'ahp'){
+    const b = ahpWeights(S.ahp.base), v = S.v ? ahpWeights(S.ahp.var) : null;
+    if (!b) return '';
+    rows = S.order.map(id => `<span>${esc(R(id).name)}</span><span>${(100 * b.w[id]).toFixed(0)}%${v ? ' → ' + (100 * v.w[id]).toFixed(0) + '%' : ''}</span>`).join('');
+    note = `AHP weights (share of the risk premium)${v ? ', baseline → version' : ''}. Consistency ratio ${b.cr.toFixed(2)}${v ? ' and ' + v.cr.toFixed(2) : ''}.`;
+  } else {
+    const num = Object.fromEntries(S.order.map(id => [id, typeof S.base[id] === 'number' ? S.base[id] : 0]));
+    const sh = share(num, S.order);
+    let bw = null;
+    if (S.fmt === 'bws'){ const sc = bwsScores(); const r = Object.fromEntries(S.order.map(id => { const B = S.sets.filter((_, i) => S.bws[i]?.b === id).length, W = S.sets.filter((_, i) => S.bws[i]?.w === id).length; return [id, Math.sqrt((B + .5) / (W + .5))]; })); bw = share(r, S.order); }
+    rows = S.order.map(id => `<span>${esc(R(id).name)}</span><span>${sh(id) == null ? '–' : (100 * sh(id)).toFixed(0) + '%'}${bw ? ' · ' + (100 * bw(id)).toFixed(0) + '%' : ''}</span>`).join('');
+    note = bw ? 'Share of the risk premium from your ratings · from your best–worst choices.' : 'Share of the risk premium from your ratings.';
+  }
+  return `<div class="def"><b>How your answers split the premium</b><span class="small">${note}</span><div class="wts">${rows}</div></div>`;
+}
+function payload(){
+  const tick = Object.fromEntries(Object.entries(S.t).map(([k, v]) => [k, Math.round(v / 1000)]));
+  const rate = o => o.ns ? 'ns' : o.best ?? null;
+  return {format:'R10', rid, notice:T.notice_version, consent_at:S.consentAt, role:T.roles[S.role] ?? null, exp:D.EXP[S.exp] ?? null,
+    known:S.known, best_known:S.best ?? S.known[0] ?? null, technology:S.tech, variant:S.v, how_known:T.how[S.how] ?? null,
+    risk_order:S.order, page_order:S.numFirst ? 'rate_first' : 'ratings_first',
+    baseline_0_10:S.base, baseline_rate_pct:rate(S.rate), rate_basis:T.basis[S.basis] ?? null, financed_by:T.finby[S.finby.rate] ?? null,
+    country:T.countries[S.country] ?? null, wind_rate_pct:rate(S.wind),
+    change_m2_p2:S.chg, variant_rate_pct:rate(S.vrate), variant_financed_by:T.finby[S.finby.vrate] ?? null, seconds_per_screen:tick, comment:S.comment,
+    ...(REVIEW ? {survey_format:S.fmt} : {}),
+    ...(S.fmt === 'bws' ? {best_worst:S.sets.map((set, i) => ({set, largest:S.bws[i]?.b ?? null, smallest:S.bws[i]?.w ?? null}))} : {}),
+    ...(S.fmt === 'ahp' ? {ahp_baseline:S.ahp.base, ahp_variant:S.v ? S.ahp.var : null} : {})};
+}
+
+function track(){ const now = Date.now(); S.t[S.step] = (S.t[S.step] || 0) + now - S.tIn; S.tIn = now; }
+function render(){
+  const st = steps(), i = st.indexOf(S.step);
+  document.getElementById('ttl').textContent = T.title;
+  document.getElementById('prog').style.width = (S.done ? 100 : Math.round(100 * i / (st.length - 1))) + '%';
+  document.getElementById('app').innerHTML = S.done ? VIEW.done() : VIEW[S.step]();
+  document.getElementById('err').textContent = '';
+  document.getElementById('foot').hidden = S.done;
+  document.getElementById('back').disabled = i === 0;
+  const next = document.getElementById('next');
+  next.textContent = S.step === 'intro' ? 'Start survey' : S.step === 'review' ? 'Submit' : 'Next';
+  next.disabled = S.step === 'intro' && !S.consent;
+  bind();
+}
+function keep(fn){ const sc = document.getElementById('scroll'), y = sc.scrollTop; fn(); render(); sc.scrollTop = y; }
+
+// Slider answers, as on the live page: input/change/click, or a tap that ends where it started (a finger that
+// moves more than 10 px is a scroll and records nothing).
+function onAnswer(el, fn){
+  let t0 = null;
+  ['input', 'change', 'click'].forEach(ev => el.addEventListener(ev, () => fn(el)));
+  el.addEventListener('touchstart', e => { const p = e.changedTouches[0]; t0 = [p.clientX, p.clientY]; }, {passive:true});
+  el.addEventListener('touchend', e => { const p = e.changedTouches[0]; if (t0 && Math.abs(p.clientX - t0[0]) < 10 && Math.abs(p.clientY - t0[1]) < 10) fn(el); t0 = null; }, {passive:true});
+}
+
+function bind(){
+  const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+  if (S.done){
+    $('#restart').onclick = () => location.reload();
+    const an = $('#another');
+    if (an) an.onclick = () => { Object.assign(S, {done:false, step:'method', fmt:null, base:{}, chg:{}, rate:{}, vrate:{}, wind:{}, basis:null, how:null,
+      finby:{rate:null, vrate:null}, country:null, bws:{}, ahp:{base:{}, var:{}}, comment:'', warned:false}); render(); };
+    return;
+  }
+  const pn = $('#pn'); if (pn) pn.onclick = e => { e.preventDefault(); openNotice(); };
+  if (S.step === 'intro') $('#consent').onchange = e => { S.consent = e.target.checked; S.consentAt = S.consent ? new Date().toISOString() : null; $('#next').disabled = !S.consent; };
+  $$('input[name=fmt]').forEach(el => el.onchange = () => keep(() => { S.fmt = el.value; }));
+  $$('[data-bset]').forEach(b => b.onclick = () => keep(() => { const i = +b.dataset.bset, k = b.dataset.bk, o = k === 'b' ? 'w' : 'b', cur = S.bws[i] || {};
+    cur[k] = cur[k] === b.dataset.bid ? undefined : b.dataset.bid; if (cur[o] === cur[k]) cur[o] = undefined; S.bws[i] = cur; }));
+  $$('[data-pk]').forEach(b => b.onclick = () => keep(() => { const part = S.step === 'sa_ahp' ? 'base' : 'var'; S.ahp[part][b.dataset.pk] = +b.dataset.pv; }));
+  $$('input[name=role]').forEach(el => el.onchange = () => S.role = +el.value);
+  $$('input[name=exp]').forEach(el => el.onchange = () => S.exp = +el.value);
+  $$('input[name=known]').forEach(el => el.onchange = () => keep(() => { S.known = $$('input[name=known]:checked').map(x => x.value); if (!S.known.includes(S.best)) S.best = null; }));
+  $$('input[name=best]').forEach(el => el.onchange = () => S.best = el.value);
+  $$('.info').forEach(b => b.onclick = () => {
+    const open = b.getAttribute('aria-expanded') === 'true';
+    $$('.info').forEach(o => { o.setAttribute('aria-expanded', 'false'); document.getElementById('d-' + o.dataset.i).hidden = true; });
+    if (!open){ b.setAttribute('aria-expanded', 'true'); document.getElementById('d-' + b.dataset.i).hidden = false; }
+  });
+  const clearWarn = () => { const w = document.getElementById('werr'); if (w){ w.hidden = true; w.textContent = ''; } };
+  $$('input[data-b]').forEach(el => onAnswer(el, el => {
+    const id = el.dataset.b, x = +el.value; S.base[id] = x;
+    const l = document.getElementById('bv-' + id); l.textContent = x + ' / 10'; l.className = 'bv ' + band(x);
+    el.classList.remove('unset'); el.setAttribute('aria-valuetext', x + ' of 10'); el.closest('.srow').classList.remove('need');
+    const n = document.querySelector(`.nsb[data-n="${id}"]`); if (n) n.setAttribute('aria-pressed', 'false'); clearWarn();
+  }));
+  $$('.nsb[data-n]').forEach(b => b.onclick = () => keep(() => { const id = b.dataset.n; if (S.base[id] === 'ns') delete S.base[id]; else S.base[id] = 'ns'; }));
+  $$('.sb[data-c]').forEach(b => b.onclick = () => keep(() => { S.chg[b.dataset.c] = +b.dataset.x; }));
+  $$('.nsb[data-cn]').forEach(b => b.onclick = () => keep(() => { const id = b.dataset.cn; if (S.chg[id] === 'ns') delete S.chg[id]; else S.chg[id] = 'ns'; }));
+  ['rate', 'vrate', 'wind'].forEach(st => {
+    const i = document.getElementById('r-' + st), n = document.getElementById('ns-' + st);
+    if (i) i.oninput = () => S[st].best = i.value === '' ? null : +i.value;
+    if (n) n.onclick = () => keep(() => S[st] = S[st].ns ? {} : {ns:true});
+  });
+  const pick = (cur, i) => cur === i ? null : i;
+  $$('[data-basis]').forEach(b => b.onclick = () => keep(() => S.basis = pick(S.basis, +b.dataset.i)));
+  $$('[data-country]').forEach(b => b.onclick = () => keep(() => S.country = pick(S.country, +b.dataset.i)));
+  $$('[data-finby]').forEach(b => b.onclick = () => keep(() => S.finby[b.dataset.finby] = pick(S.finby[b.dataset.finby], +b.dataset.i)));
+  $$('[data-how]').forEach(b => b.onclick = () => keep(() => S.how = S.how === +b.dataset.how ? null : +b.dataset.how));
+  if (S.step === 'review') $('#comment').oninput = e => S.comment = e.target.value;
+}
+
+function openNotice(){
+  document.getElementById('nbody').innerHTML = `<p><b>What we collect.</b> If you take part, we record:</p><ul>${T.notice_collect.map(x => `<li>${esc(x)}</li>`).join('')}</ul><p>${esc(T.notice_rest)}</p><p class="muted small">Notice version ${esc(T.notice_version)}.</p>`;
+  document.getElementById('notice').hidden = false; document.getElementById('nclose').focus();
+}
+document.getElementById('nclose').onclick = () => { document.getElementById('notice').hidden = true; const pn = document.getElementById('pn'); if (pn) pn.focus(); };
+
+function check(){
+  const say = m => { document.getElementById('err').textContent = m; return false; };
+  if (S.step === 'method' && !S.fmt) return say('Choose a format to review.');
+  if (S.step === 'role' && S.role == null) return say('Choose your main role.');
+  if (S.step === 'known' && !S.known.length) return say('Tick at least one technology.');
+  if (S.step === 'best' && !S.best) return say('Choose the one you know best.');
+  // assign the technology after the last "About you" page
+  if ((S.step === 'known' && S.known.length === 1) || S.step === 'best'){
+    const a = allocate();
+    const answered = Object.keys(S.base).length || Object.keys(S.chg).length;
+    if (S.tech && (S.tech !== a.t || S.v !== a.v) && answered && !S.warned){ S.warned = true; return say('Changing your technologies changes what you rate and clears your answers. Tap Next again to continue.'); }
+    if (S.tech !== a.t || S.v !== a.v) Object.assign(S, {tech:a.t, v:a.v, base:{}, chg:{}, rate:{}, vrate:{}, wind:{}, basis:null, how:null});
+  }
+  const rateOk = (st, label) => {
+    const o = S[st]; if (o.ns) return true;
+    if (o.best == null) return say(`Enter ${label}, or tap "${T.rate_ns}".`);
+    if (!(o.best > 0 && o.best <= 60)) return say(`${label[0].toUpperCase() + label.slice(1)} must be between 0.5 and 60%.`);
+    return true;
+  };
+  const soft = (unsetIds) => {
+    if (unsetIds.length && !S.warned){
+      S.warned = true; render();
+      const first = document.querySelector(`.srow[data-row="${unsetIds[0]}"]`), w = document.getElementById('werr');
+      w.textContent = `${unsetIds.length} not set (highlighted below). Answer them, or tap Next again to continue without ${unsetIds.length === 1 ? 'it' : 'them'}.`;
+      w.hidden = false; first.parentNode.insertBefore(w, first); w.scrollIntoView({block:'start'});
+      return false;
+    }
+    S.warned = false; return true;
+  };
+  if (S.step === 'sa_rate') return soft(S.order.filter(id => S.base[id] === undefined));
+  if (S.step === 'sa_num') return rateOk('rate', 'a discount rate for this project') && rateOk('wind', 'a rate for the wind farm');
+  if (S.step === 'cmp_rate') return soft(cmpIds().filter(id => S.chg[id] === undefined));
+  if (S.step === 'cmp_num') return rateOk('vrate', 'a discount rate for this version');
+  if (S.step === 'sa_bws') return soft(S.sets.map((_, i) => i).filter(i => !(S.bws[i]?.b && S.bws[i]?.w)).map(i => 'set' + i));
+  if (S.step === 'sa_ahp') return soft(S.pairs.map(([a, b]) => a + '|' + b).filter(k => S.ahp.base[k] == null));
+  if (S.step === 'cmp_ahp') return soft(S.pairs.map(([a, b]) => a + '|' + b).filter(k => S.ahp.var[k] == null));
+  return true;
+}
+
+document.getElementById('next').onclick = () => {
+  if (!check()) return;
+  track();
+  if (S.step === 'review'){ S.records.push(payload()); S.done = true; render(); return; }
+  const st = steps(); S.step = st[Math.min(st.indexOf(S.step) + 1, st.length - 1)]; S.warned = false; render(); document.getElementById('scroll').scrollTop = 0;
+};
+document.getElementById('back').onclick = () => { track(); const st = steps(); S.step = st[Math.max(0, st.indexOf(S.step) - 1)]; S.warned = false; render(); document.getElementById('scroll').scrollTop = 0; };
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !document.getElementById('notice').hidden) document.getElementById('nclose').click(); });
+render();
+</script>
+</body>
+</html>
