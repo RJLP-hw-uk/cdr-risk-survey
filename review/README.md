@@ -17,7 +17,7 @@ All three ask the same project descriptions and discount-rate questions. The las
 answers split the risk premium, and "Review another format" restarts at the format page.
 
 The file is generated; do not edit it here. Source: private repository `RJLP-hw-uk/cdr-cost-of-capital`,
-branch `survey-v10-copy-and-simulation`, commit 975a32b: `survey/v11_preview/template.html`,
+branch `survey-v10-copy-and-simulation`, commit a86efb7: `survey/v11_preview/template.html`,
 `v11_text.json`, `v11_overrides.json`, built with `python code/survey_sim/build_preview.py`. The design,
 the simulation comparing the formats and the expert reviews are in the same repository
 (`survey/METHODOLOGY.md`, `results/survey_sim/formats/`, `survey/reviews/`).

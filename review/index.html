@@ -55,6 +55,12 @@ header.mast{display:flex;gap:12px;align-items:center;justify-content:space-betwe
 .facts dt{font-size:.8rem;font-weight:700;color:var(--ink-2);line-height:1.4}
 .facts dd{margin:0;font-size:.92rem;line-height:1.4}
 @media (max-width:480px){.facts>div{grid-template-columns:1fr;gap:1px}}
+/* QR code for sharing, as on the live v10 intro page: right of the facts on wide screens, below them on phones */
+.introfacts{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:start}
+.share{margin:0;padding-top:8px}
+.qr{display:block;width:112px;height:112px;border-radius:4px;overflow:hidden}
+.qr svg{display:block;width:100%;height:100%}
+@media (max-width:480px){.introfacts{grid-template-columns:1fr;gap:4px}.share{border-top:1px solid var(--rule)}}
 .contact{font-weight:700;user-select:all}
 .consent{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--rule);border-radius:var(--r);cursor:pointer;font-size:.92rem;line-height:1.4}
 .consent input{width:20px;height:20px;margin:1px 0 0;flex:none;accent-color:var(--accent)}
@@ -185,7 +191,8 @@ const ROWS = [['where', 'Site and infrastructure'], ['owner', 'Owner and finance
 const DEMO_COUNTS = {'dac_ss:cp':6,'dac_ss:ch':7,'dac_ls:ch':4,'dac_ec:sa':2,'beccs:cp':5,'biochar:cp':3,'biochar:ch':5,'erw:sa':3,'cew:ch':2,'oae_ec:cp':2,'oae_ec:ch':3,'oae_min:ch':1,'ccs_pow:cp':4,'ccs_ind:cp':3};
 const BEST_BONUS = 1;
 
-const REVIEW = true;   // review build: a page to pick the answer format for comparison
+const REVIEW = true;
+const QR = "<svg role=\"img\" aria-label=\"QR code for the review page\" shape-rendering=\"crispEdges\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 41 41\" class=\"segno\"><path fill=\"#fff\" d=\"M0 0h41v41h-41z\"/><path class=\"qrline\" stroke=\"#000\" d=\"M2 2.5h7m1 0h1m1 0h4m1 0h2m3 0h3m1 0h2m2 0h1m1 0h7m-37 1h1m5 0h1m2 0h1m1 0h2m3 0h2m3 0h1m3 0h1m1 0h1m2 0h1m5 0h1m-37 1h1m1 0h3m1 0h1m3 0h2m2 0h1m1 0h1m3 0h2m2 0h1m1 0h3m1 0h1m1 0h3m1 0h1m-37 1h1m1 0h3m1 0h1m3 0h1m2 0h2m5 0h1m4 0h1m1 0h1m2 0h1m1 0h3m1 0h1m-37 1h1m1 0h3m1 0h1m1 0h2m1 0h3m1 0h1m1 0h1m2 0h1m2 0h1m6 0h1m1 0h3m1 0h1m-37 1h1m5 0h1m1 0h2m1 0h1m1 0h3m1 0h1m1 0h1m1 0h1m2 0h1m2 0h2m1 0h1m5 0h1m-37 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-28 1h2m3 0h1m2 0h1m2 0h5m3 0h1m-28 1h7m1 0h3m2 0h1m3 0h2m2 0h1m1 0h1m6 0h2m3 0h1m-32 1h1m1 0h3m2 0h1m3 0h2m3 0h1m1 0h1m1 0h1m1 0h1m3 0h1m1 0h1m-34 1h1m1 0h3m1 0h1m3 0h1m2 0h3m3 0h1m2 0h1m1 0h5m1 0h2m1 0h4m-37 1h6m4 0h1m2 0h1m5 0h3m1 0h1m2 0h1m1 0h1m1 0h1m1 0h1m2 0h1m-33 1h1m2 0h1m1 0h2m5 0h2m2 0h1m2 0h2m1 0h2m2 0h6m1 0h1m-37 1h1m1 0h2m1 0h1m1 0h2m2 0h5m1 0h1m2 0h1m2 0h1m1 0h2m1 0h2m1 0h1m1 0h2m-34 1h2m2 0h5m6 0h5m1 0h1m1 0h1m2 0h3m1 0h1m1 0h1m2 0h1m-36 1h1m2 0h1m2 0h1m1 0h2m2 0h2m2 0h3m11 0h2m2 0h1m-33 1h1m2 0h1m1 0h1m1 0h2m3 0h1m1 0h14m1 0h1m1 0h3m-37 1h1m2 0h1m3 0h1m1 0h1m3 0h1m1 0h2m1 0h1m6 0h2m1 0h1m5 0h1m-34 1h1m3 0h5m1 0h2m1 0h1m1 0h1m2 0h6m1 0h3m1 0h3m2 0h2m-36 1h3m1 0h1m1 0h1m2 0h2m2 0h2m3 0h5m2 0h2m4 0h1m3 0h1m-37 1h2m2 0h1m1 0h1m1 0h1m3 0h1m3 0h1m5 0h2m1 0h2m2 0h4m1 0h3m-37 1h3m1 0h2m3 0h2m3 0h1m1 0h1m1 0h1m4 0h1m1 0h2m4 0h1m3 0h1m-36 1h1m2 0h1m1 0h2m3 0h1m1 0h2m1 0h1m1 0h1m4 0h1m2 0h3m1 0h2m2 0h1m1 0h2m-35 1h3m4 0h2m1 0h2m1 0h1m1 0h2m2 0h2m2 0h1m3 0h3m3 0h1m-35 1h1m4 0h2m1 0h1m2 0h1m1 0h2m2 0h2m4 0h1m1 0h1m2 0h2m1 0h1m1 0h2m-36 1h2m2 0h1m7 0h2m1 0h1m2 0h2m1 0h1m1 0h2m4 0h1m1 0h1m-32 1h1m4 0h2m1 0h2m2 0h1m1 0h5m2 0h2m1 0h2m1 0h2m1 0h1m1 0h1m2 0h2m-37 1h1m1 0h1m1 0h1m3 0h1m1 0h1m1 0h1m2 0h3m3 0h4m3 0h2m1 0h1m3 0h1m-36 1h1m4 0h3m2 0h1m2 0h1m2 0h5m1 0h1m1 0h9m1 0h2m-28 1h2m1 0h1m3 0h1m1 0h1m2 0h4m4 0h1m3 0h1m2 0h1m-36 1h7m1 0h5m1 0h5m2 0h1m2 0h1m1 0h1m1 0h1m1 0h1m1 0h2m1 0h2m-37 1h1m5 0h1m1 0h1m3 0h1m1 0h3m2 0h1m1 0h4m1 0h1m1 0h1m3 0h1m3 0h1m-37 1h1m1 0h3m1 0h1m1 0h2m1 0h3m1 0h1m5 0h1m1 0h1m1 0h8m1 0h1m-35 1h1m1 0h3m1 0h1m1 0h1m1 0h5m1 0h3m1 0h1m1 0h1m1 0h1m5 0h1m1 0h1m2 0h1m-36 1h1m1 0h3m1 0h1m1 0h1m1 0h1m1 0h1m2 0h1m3 0h1m1 0h1m3 0h1m1 0h3m6 0h1m-37 1h1m5 0h1m1 0h1m5 0h4m1 0h4m1 0h1m1 0h5m1 0h1m3 0h1m-37 1h7m2 0h1m3 0h1m3 0h1m1 0h1m5 0h2m2 0h1m3 0h4\"/></svg>";   // inline SVG QR code of this page's address (code/survey_sim/make_qr.py)   // review build: a page to pick the answer format for comparison
 const rid = 'r-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
 const S = {step:'intro', consent:false, consentAt:null, role:null, exp:null, known:[], best:null, tech:null, v:null, how:null,
   base:{}, rate:{}, wind:{}, basis:null, chg:{}, vrate:{}, finby:{rate:null, vrate:null}, country:null, comment:'', warned:false, done:false, second:false, records:[],
@@ -292,12 +299,12 @@ function riskHead(r, valHtml){
 const VIEW = {
   intro: () => `<div class="card"><span class="tag part">About this survey</span>
     <div class="intro"><h2>${esc(T.intro.heading)}</h2><p>${esc(T.intro.body)}</p></div>
-    <dl class="facts">
+    <div class="introfacts"><dl class="facts">
       <div><dt>Who we are</dt><dd>${esc(T.intro.who)}</dd></div>
       <div><dt>Time needed</dt><dd>${esc(T.intro.time)} ${NEW}</dd></div>
       <div><dt>Your data</dt><dd>${esc(T.intro.data)}</dd></div>
       <div><dt>Contact</dt><dd>${T.intro.contacts.map(c => `<span class="contact">${esc(c)}</span>`).join('<br>')}</dd></div>
-    </dl>
+    </dl>${QR ? `<figure class="share"><span class="qr" id="qr">${QR}</span></figure>` : ''}</div>
     <label class="consent"><input type="checkbox" id="consent" ${S.consent ? 'checked' : ''}><span>${esc(T.intro.consent).replace('privacy notice', '<button type="button" class="linkbtn" id="pn">privacy notice</button>')}</span></label></div>`,
 
   method: () => `<div class="card"><span class="tag part">${esc(T.review.tag)}</span>
