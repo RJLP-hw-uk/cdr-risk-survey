@@ -14,9 +14,11 @@ const server = http.createServer((req, res) => {
   const rel = decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/, '') || 'index.html';
   const file = path.join(ROOT, rel);
   if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); return res.end(); }
-  res.writeHead(200, {'Content-Type': /\.html$/.test(file) ? 'text/html; charset=utf-8' : /\.js$/.test(file) ? 'text/javascript' : 'application/octet-stream'});
+  res.writeHead(200, {'Content-Type': /\.html$/.test(file) ? 'text/html; charset=utf-8' : /\.js$/.test(file) ? 'text/javascript' : /\.json$/.test(file) ? 'application/json' : 'application/octet-stream'});
   fs.createReadStream(file).pipe(res);
 });
+// Bundled Chromium if installed (npx playwright install chromium), otherwise the system Chrome (CHROME_PATH or /usr/bin/google-chrome).
+async function launchBrowser(){ try { return await chromium.launch(); } catch (e) { return chromium.launch({executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome'}); } }
 const listening = new Promise(r => server.listen(0, '127.0.0.1', () => r(server.address().port)));
 let PAGE;
 const MOCK = require('fs').readFileSync(path.join(__dirname, 'mock.js'), 'utf8');
@@ -44,9 +46,39 @@ async function newCtx(browser, role, opts = {}){
   await page.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
   page.posts = [];
   await page.route(/docs\.google\.com\/forms/, r => { page.posts.push(r.request().postData()); r.fulfill({status:200, body:'ok'}); });
+  await routeResults(page, opts.results);
   await page.goto(PAGE); await sleep(200);
   return {ctx, page};
 }
+// results.json: the fixture by default (the root copy will be replaced with real aggregates), or a 404.
+const FIX = JSON.parse(fs.readFileSync(path.join(__dirname, 'results.fixture.json'), 'utf8'));
+async function routeResults(page, mode){
+  page.resultsHits = 0;
+  await page.route(/results\.json/, r => { page.resultsHits++; if (mode === 404) return r.fulfill({status:404, body:''});
+    r.fulfill({status:200, contentType:'application/json', body:JSON.stringify(mode && typeof mode === 'object' ? mode : FIX)}); });
+}
+// Implied discount rate as the page should compute it (see index.html, resHtml).
+function expectedRate(R, tech, sa, chg){
+  const M = R.model, g = R.groups, mn = R.min_n, ex = g.experts && g.experts[tech], ai = g.ai && g.ai[tech];
+  const src = ex && ex.n >= mn ? ex : ai;
+  let r = M.rf + M.crp + M.base + (M.res_pp[tech] || 0);
+  for (const k of ORDER) { const b = typeof sa[k] === 'number' ? sa[k] : src.sa[k][1]; const c = chg && typeof chg[k] === 'number' ? chg[k] : 0;
+    r += M.caps[k] * Math.max(0, Math.min(1, (b + (chg ? M.step * c : 0)) / 10)); }
+  return r;
+}
+// Figures on the thank-you screen: rows per figure, You dots per figure, groups drawn, legend entries.
+const figs = p => p.evaluate(() => {
+  const res = document.getElementById('res'); if (!res || res.hidden) return null;
+  const f = id => { const e = document.getElementById(id); if (!e) return null;
+    return {label: e.querySelector('figcaption').textContent, rows: [...e.querySelectorAll('.rrow')].map(r => r.querySelector('.rl').textContent),
+      you: Object.fromEntries([...e.querySelectorAll('circle.you')].map(c => [c.dataset.k, +c.dataset.v])),
+      groups: [...new Set([...e.querySelectorAll('.rmk')].map(m => m.dataset.g))].sort().join(','),
+      ticks: [...e.querySelectorAll('.rt')].map(t => t.textContent),
+      fits: (() => { const sv = e.querySelector('svg').getBoundingClientRect(); return [...e.querySelectorAll('text')].every(t => { const b = t.getBoundingClientRect(); return b.left >= sv.left - 1 && b.right <= sv.right + 1; }); })()}; };
+  const prev = res.previousElementSibling, next = res.nextElementSibling;
+  return {sa: f('rf-sa'), v: f('rf-var'), rate: f('rf-rate'), legend: [...res.querySelectorAll('.rleg > span')].map(s => s.textContent).join(','),
+    after: prev ? prev.textContent : '', before: next ? next.textContent.slice(0, 40) : '', text: [...res.querySelectorAll('p')].length};
+});
 const state = p => p.evaluate(k => JSON.parse(localStorage.getItem(k) || '{}'), KEY);
 const step = async p => (await state(p)).step;
 const store = p => Promise.resolve(JSON.parse(p.context().db.text || '{}'));
@@ -137,7 +169,7 @@ async function baselineChecks(p, label){
 
 (async () => {
   PAGE = 'http://127.0.0.1:' + (await listening) + '/index.html';
-  const browser = await chromium.launch();
+  const browser = await launchBrowser();
   let s, st, ids;
 
   // ---------- S0: intro page, privacy notice and the technology list
@@ -145,6 +177,8 @@ async function baselineChecks(p, label){
   let {ctx, page: p} = await newCtx(browser, 'none');
   check(await p.isVisible('#consent'), 'consent box on the first page');
   check((await appText(p)).includes('Heriot-Watt') && (await appText(p)).includes('minutes'), 'intro names the team and the time needed');
+  check(await p.$$eval('.facts > div', e => e.map(x => x.textContent)).then(a => a[1] === 'Time needed8–15 minutes' && a[2] === 'After you submitSee how your answers compare.'), 'intro facts: "After you submit / See how your answers compare." right after Time needed');
+  check(!(await p.$('#res')) && p.resultsHits === 0, 'no results figures and no results request before Submit');
   const qr = await p.$eval('#qr svg', s => { const r = s.getBoundingClientRect(); return {w: r.width, h: r.height, vb: s.getAttribute('viewBox'), path: !!s.querySelector('path[stroke]')}; }).catch(() => null);
   check(qr && qr.w >= 100 && Math.abs(qr.w - qr.h) < 1 && qr.vb === '0 0 37 37' && qr.path, 'intro shows the QR code for sharing (square, at least 100 px)');
   check(!(await appText(p)).includes('Share this survey') && !(await p.$('.share figcaption')), 'QR code is shown on its own, without caption or link text');
@@ -483,6 +517,10 @@ async function baselineChecks(p, label){
   const sent = JSON.parse(Buffer.from(code.slice(9), 'base64').toString('utf8'));
   check(sent.v === 9 && sent.ratings.sa.CUR === 0 && sent.ratings.sa.CON === 10 && sent.ratings.sa.POL === 'ns' && (sent.techRank || []).join() === 'beccs,erw,dac_ss' && sent.timing && sent.timing.totalS === tTot && sent.cat === 'dac_ss' && Object.keys(sent.ratings.sa).length === 7 && Object.keys(sent.ratings.cp).length === 0 && Object.keys(sent.ratings.ch).length === 0 && sent.parts.cp === null && sent.parts.ch.skipped === true && Object.keys(sent.weights).join() === 'all' && sent.weights.all.POL === 5 && sent.variant === 'ch' && sent.variantRandom === true && sent.rid && sent.consent.given, 'decoded form payload is complete');
   check(await p.$eval('#bk', e => e.value) === code, 'backup code matches what was sent');
+  const fg3 = await figs(p);
+  check(fg3 && fg3.sa && fg3.sa.rows.length === 7 && !fg3.v && fg3.rate && fg3.rate.rows.join() === 'Baseline', 'skipped variant: risk and rate figures only, no co-host figure, rate has the baseline row only');
+  check(fg3 && fg3.sa && fg3.sa.you.POL === undefined && fg3.sa.you.CUR === 0 && fg3.sa.you.CON === 10 && Object.keys(fg3.sa.you).length === 6, 'Not sure gives no dot; 0 and 10 dots at the ends');
+  check(fg3 && fg3.rate && Math.abs(fg3.rate.you.sa - expectedRate(FIX, 'dac_ss', {TEC:2,PRI:3,POL:'ns',CUR:0,CON:10,CPT:4,SOC:2})) < 1e-6, 'implied baseline rate with a Not sure answer (experts median used) matches the formula (' + (fg3 && fg3.rate && fg3.rate.you.sa) + ')');
   // interview offer
   await p.click('#iv1'); await sleep(40);
   check(await p.isVisible('#ivn'), 'Yes shows the contact fields');
@@ -519,6 +557,8 @@ async function baselineChecks(p, label){
   check(await until(async () => (await h2(p)) === 'One last step: send your answers', 16000), 'email fallback when the form cannot be reached');
   check((await p.$eval('#code', e => e.value)).startsWith('CDRRISK2.'), 'fallback shows answer code');
   check(await p.isVisible('#another'), 'fallback offers Evaluate another technology');
+  const fgb = await figs(p);
+  check(fgb && fgb.sa && fgb.sa.rows.length === 7 && fgb.sa.groups === 'ai' && !fgb.v && fgb.rate && fgb.legend === 'You,AI', 'email fallback screen also shows the figures (rock weathering: AI only, no variant)');
   check(p.errors.length === 0, 'no page errors in fallback: ' + p.errors.join(' | '));
   await ctx.close();
 
@@ -533,6 +573,7 @@ async function baselineChecks(p, label){
     check(await p.isVisible('#ref'), 'reference field shown in interview mode');
     await p.fill('#ref', ref); await clickNext(p);
     check(await until(async () => (await h2(p)) === 'Saved.'), 'interview saved screen for ' + ref);
+    await sleep(150); check(!(await p.$('#res')) && !(await p.$('.rfig')) && p.resultsHits === 0, 'no results figures in interview mode (' + ref + ')');
     const f = new URLSearchParams(p.posts[p.posts.length - 1]);
     const o = JSON.parse(Buffer.from(f.get('entry.269220021').slice(9), 'base64').toString('utf8'));
     check(o.ref === ref && o.mode === 'interview' && f.get('entry.530102048').split('|')[3] === ref, 'form row carries reference ' + ref);
@@ -654,6 +695,92 @@ async function baselineChecks(p, label){
   check(await step(p) === 'w', 'one tap on Next moves on once every risk is answered (rock weathering: straight to importance)');
   check(p.errors.length === 0, 'no page errors with touch on the baseline: ' + p.errors.join(' | '));
   await ctx.close();
+
+  // ---------- S9: results figures on the thank-you screen (seeded at the review step, submitted via the mocked form)
+  console.log('S9 results figures');
+  const ROOTRES = JSON.parse(fs.readFileSync(path.join(ROOT, 'results.json'), 'utf8'));
+  check(ROOTRES.format === 'cdr-risk-results/1' && ROOTRES.updated === 'fixture' ? JSON.stringify(ROOTRES) === JSON.stringify(FIX) : ROOTRES.format === 'cdr-risk-results/1', 'root results.json is in the results format (and equals the fixture while marked "fixture")');
+  check(Object.keys(FIX.groups.ai).join() === 'dac_ss,dac_ls,dac_ec,beccs,biochar,erw,cew,oae_ec,oae_min,ccs_pow,ccs_ind', 'fixture covers all 11 technologies');
+  const SA9 = {TEC:7, PRI:4, POL:'ns', CUR:2, CON:9, CPT:5, SOC:3};
+  const CP9 = {TEC:-1, PRI:-2, POL:0, CUR:1, CON:0, CPT:-1};   // SOC unanswered -> change 0
+  const CH9 = {TEC:1, PRI:0, POL:-1, CUR:-2, CON:0, CPT:2, SOC:-1};
+  async function doneWith(o){
+    const c = await browser.newContext({viewport: o.viewport || {width:1366, height:768}});
+    await c.addInitScript(([k, s]) => { if (sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded', '1'); localStorage.setItem(k, JSON.stringify(s)); }, [KEY,
+      {step:'review', consent:true, exp:1, sector:[1], cat:o.cat, variant:o.variant || null, ratings:{sa:o.sa, cp:o.cp || {}, ch:o.ch || {}}, weights:{}, rankDone:false, skip:o.skip || {cp:false, ch:false}, techRank:[]}]);
+    const pg = await c.newPage(); pg.errors = []; pg.on('pageerror', e => pg.errors.push(e.message));
+    await pg.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort()); await pg.route(/docs\.google\.com\/forms/, r => r.fulfill({status:200, body:'ok'}));
+    await routeResults(pg, o.results);
+    await pg.goto(PAGE + (o.hash || '')); await sleep(200);
+    check(await step(pg) === 'review', o.tag + ': seeded at the review step');
+    await clickNext(pg);
+    await until(async () => /Thank you|Saved\./.test(await h2(pg)));
+    await until(async () => pg.resultsHits > 0 && await pg.$eval('#res', e => !e.hidden || e.dataset.x), 800).catch(() => {});
+    await sleep(150);
+    return {c, pg};
+  }
+  let r9;
+  // DAC solid sorbent with its co-product version: experts (n 6) and AI (n 12) drawn
+  r9 = await doneWith({tag:'dac_ss cp', cat:'dac_ss', variant:'cp', sa:SA9, cp:CP9});
+  let F = await figs(r9.pg);
+  check(F && F.sa && F.v && F.rate, 'three figures after submitting a baseline and a variant');
+  check(F && F.after === 'Your answers are saved.' && /Would you be willing/.test(F.before), 'figures sit right under "Your answers are saved." and before the interview offer');
+  check(F && F.sa.label === 'Risk rating' && F.v.label === 'Co-product' && F.rate.label === 'Discount rate, %', 'figure labels: Risk rating, Co-product, Discount rate, %');
+  check(F && F.sa.rows.join('|') === 'Technology|Price|Policy|Supply chain|Cost|Counterparty|Permitting' && F.v.rows.length === 7 && F.rate.rows.join('|') === 'Baseline|Co-product', 'rows: 7, 7 and 2 (Baseline, Co-product)');
+  check(F && F.sa.ticks.join() === '0,5,10' && F.v.ticks.join() === 'Much lower,Same,Much higher', 'axis ticks 0 5 10 and Much lower / Same / Much higher');
+  check(F && JSON.stringify(F.sa.you) === JSON.stringify({TEC:7, PRI:4, CUR:2, CON:9, CPT:5, SOC:3}), 'You dots on the risk figure match the baseline answers, none for Not sure (' + JSON.stringify(F && F.sa.you) + ')');
+  check(F && JSON.stringify(F.v.you) === JSON.stringify(CP9), 'You dots on the co-product figure match the changes, none for the unanswered risk (' + JSON.stringify(F && F.v.you) + ')');
+  const eSa = expectedRate(FIX, 'dac_ss', SA9), eCp = expectedRate(FIX, 'dac_ss', SA9, CP9);
+  check(F && Math.abs(F.rate.you.sa - eSa) < 1e-6 && Math.abs(F.rate.you.cp - eCp) < 1e-6, 'implied rates match the formula (baseline ' + eSa.toFixed(3) + ' / ' + (F && F.rate.you.sa) + ', co-product ' + eCp.toFixed(3) + ' / ' + (F && F.rate.you.cp) + ')');
+  check(F && F.sa.groups === 'ai,experts' && F.v.groups === 'ai,experts' && F.rate.groups === 'ai,experts' && F.legend === 'You,Experts,AI', 'experts and AI drawn; legend You, Experts, AI');
+  check(F && F.text === 0, 'no explanatory sentences inside the figures section');
+  const rq = await r9.pg.$$eval('#rf-sa .rmk', e => e.map(m => m.dataset.g + ':' + m.dataset.k + ':' + m.dataset.q));
+  check(rq.includes('experts:TEC:' + FIX.groups.experts.dac_ss.sa.TEC.join(',')) && rq.includes('ai:SOC:' + FIX.groups.ai.dac_ss.sa.SOC.join(',')) && rq.length === 14, 'group bars carry the fixture quartiles (14 bars)');
+  const thick = await r9.pg.evaluate(() => { const h = g => +document.querySelector('#rf-sa .rmk[data-g="' + g + '"] rect').getAttribute('height'); return h('experts') > h('ai'); });
+  check(thick, 'experts bar thicker than the AI bar (not colour alone)');
+  const xy = await r9.pg.evaluate(() => { const e = document.querySelector('#rf-sa'), sv = e.querySelector('svg'), vb = sv.viewBox.baseVal, W = sv.getBoundingClientRect().width;
+    const gx = [...e.querySelectorAll('line.rg')].map(l => +l.getAttribute('x1')), dot = +e.querySelector('circle.you[data-k="TEC"]').getAttribute('cx');
+    return {pos: (dot - gx[0]) / (gx[2] - gx[0]), scale: W / vb.width}; });
+  check(Math.abs(xy.pos - 0.7) < 0.01 && Math.abs(xy.scale - 1) < 0.02, 'a rating of 7 sits at 70% of the 0–10 axis; figure drawn at 1:1 (' + xy.pos.toFixed(3) + ')');
+  check(F && F.sa.fits && F.v.fits && F.rate.fits, 'all figure text inside the figure (1366)');
+  check(r9.pg.errors.length === 0, 'no page errors with figures: ' + r9.pg.errors.join(' | '));
+  await r9.c.close();
+  // Phone width, co-host version
+  r9 = await doneWith({tag:'biochar ch 360', cat:'biochar', variant:'ch', sa:SA9, ch:CH9, viewport:{width:360, height:740}});
+  F = await figs(r9.pg);
+  check(F && F.v && F.v.label === 'Co-host' && JSON.stringify(F.v.you) === JSON.stringify(CH9) && Math.abs(F.rate.you.ch - expectedRate(FIX, 'biochar', SA9, CH9)) < 1e-6, 'co-host figure and rate at 360 px');
+  check(F && F.sa.fits && F.v.fits && F.rate.fits, 'all figure text inside the figure at 360 px');
+  const ov = await r9.pg.evaluate(() => [document.documentElement.scrollWidth, innerWidth, document.documentElement.scrollHeight, innerHeight, document.getElementById('scroll').scrollHeight > document.getElementById('scroll').clientHeight]);
+  check(ov[0] <= ov[1] && ov[2] <= ov[3] && ov[4], 'phone: page itself does not scroll; the middle area does');
+  await r9.c.close();
+  // Experts below min_n (coastal weathering: experts n 2) -> AI only
+  r9 = await doneWith({tag:'cew', cat:'cew', sa:SA9, ch:CH9});
+  F = await figs(r9.pg);
+  check(F && F.sa.groups === 'ai' && F.v.groups === 'ai' && F.rate.groups === 'ai' && F.legend === 'You,AI', 'experts hidden when their n is below min_n; legend without Experts');
+  await r9.c.close();
+  // Variant skipped -> no variant figure
+  r9 = await doneWith({tag:'skip', cat:'dac_ss', variant:'cp', sa:SA9, skip:{cp:true, ch:false}});
+  F = await figs(r9.pg);
+  check(F && F.sa && !F.v && F.rate.rows.join() === 'Baseline', 'variant skipped: no variant figure, rate figure has only the baseline');
+  await r9.c.close();
+  // results.json missing -> nothing, no error text
+  r9 = await doneWith({tag:'404', cat:'dac_ss', variant:'cp', sa:SA9, cp:CP9, results:404});
+  check(r9.pg.resultsHits > 0 && await figs(r9.pg) === null && !(await r9.pg.$('.rfig')) && (await h2(r9.pg)) === 'Thank you for your time!', 'results.json 404: no figures, thank-you screen unchanged');
+  check(r9.pg.errors.length === 0, 'no page errors on 404: ' + r9.pg.errors.join(' | '));
+  await r9.c.close();
+  // Malformed file -> nothing
+  r9 = await doneWith({tag:'bad', cat:'dac_ss', variant:'cp', sa:SA9, cp:CP9, results:{format:'something-else'}});
+  check(await figs(r9.pg) === null, 'malformed results file: no figures');
+  await r9.c.close();
+  // No group reaches min_n -> nothing
+  const none = JSON.parse(JSON.stringify(FIX)); none.min_n = 50;
+  r9 = await doneWith({tag:'min_n', cat:'dac_ss', variant:'cp', sa:SA9, cp:CP9, results:none});
+  check(await figs(r9.pg) === null, 'no group reaches min_n: no figures at all');
+  await r9.c.close();
+  // Interview mode
+  r9 = await doneWith({tag:'interview', cat:'dac_ss', variant:'cp', sa:SA9, cp:CP9, hash:'#interview'});
+  check((await h2(r9.pg)) === 'Saved.' && !(await r9.pg.$('#res')) && r9.pg.resultsHits === 0, 'interview mode: no figures and no results request');
+  await r9.c.close();
 
   await browser.close(); server.close();
   console.log(`\n${passes} checks passed, ${fails} failed`);

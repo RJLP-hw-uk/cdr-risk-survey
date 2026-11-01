@@ -10,6 +10,7 @@
   --h-low:#DDEBD6; --h-mid:#F2E3B6; --h-high:#F0C9BD; --chip:#1C2521; --chip-ink:#FFFFFF;
   --warn:#8A3B24;
   --s-lo:#6FAF5A; --s-mid:#E6B53E; --s-hi:#CF5B43;
+  --r-ex:var(--accent); --r-ai:#B88A26;
   --f-display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
   --f-body:"Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
   --r:6px;
@@ -19,14 +20,14 @@
     --bg:#131916; --surface:#1B231F; --ink:#E3EAE5; --ink-2:#9EABA4; --rule:#2F3A34;
     --accent:#9CC46E; --accent-ink:#0F160D; --accent-soft:#25331F;
     --h-low:#203528; --h-mid:#463D20; --h-high:#4C2A24; --chip:#E3EAE5; --chip-ink:#131916;
-    --warn:#E59A80; --s-lo:#4F8E3F; --s-mid:#B88A26; --s-hi:#B04A37; color-scheme:dark;
+    --warn:#E59A80; --s-lo:#4F8E3F; --s-mid:#B88A26; --s-hi:#B04A37; --r-ai:#C98A2E; color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
   --bg:#131916; --surface:#1B231F; --ink:#E3EAE5; --ink-2:#9EABA4; --rule:#2F3A34;
   --accent:#9CC46E; --accent-ink:#0F160D; --accent-soft:#25331F;
   --h-low:#203528; --h-mid:#463D20; --h-high:#4C2A24; --chip:#E3EAE5; --chip-ink:#131916;
-  --warn:#E59A80; --s-lo:#4F8E3F; --s-mid:#B88A26; --s-hi:#B04A37; color-scheme:dark;
+  --warn:#E59A80; --s-lo:#4F8E3F; --s-mid:#B88A26; --s-hi:#B04A37; --r-ai:#C98A2E; color-scheme:dark;
 }
 *,*::before,*::after{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font:400 16px/1.5 var(--f-body);font-variant-numeric:tabular-nums}
@@ -195,6 +196,25 @@ td.num{text-align:center}
 .rlist{display:grid;gap:4px;max-height:320px;overflow-y:auto}
 .ritem{display:flex;gap:8px;align-items:center;justify-content:space-between;font-size:.86rem;padding:6px 8px;border:1px solid var(--rule);border-radius:var(--r)}
 .ritem .t{min-width:0;overflow-wrap:anywhere}
+
+/* thank-you screen: own answers against other respondents (figures built from results.json) */
+.res{display:grid;gap:12px;border-top:1px solid var(--rule);padding-top:12px}
+.rleg{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:.8rem;color:var(--ink-2);line-height:1.2}
+.rleg span{display:inline-flex;align-items:center;gap:6px}
+.rleg svg{display:block;overflow:visible}
+.rfig{margin:0;display:grid;gap:2px}
+.rfig figcaption{font-size:.8rem;font-weight:700;color:var(--ink-2);letter-spacing:.03em}
+.rfig svg{display:block;width:100%;height:auto;overflow:visible}
+.res text{font-family:var(--f-body)}
+.res .rl{fill:var(--ink);font-size:12.5px}
+.res .rt{fill:var(--ink-2);font-size:11px}
+.res .rg{stroke:var(--rule);stroke-width:1}
+.res .rg.r0{stroke:var(--ink-2);stroke-width:1.25}
+.res .rb-ex{fill:var(--r-ex);fill-opacity:.5}
+.res .rb-ai{fill:var(--r-ai);fill-opacity:.6}
+.res .rm-ex{stroke:var(--r-ex);stroke-width:3;stroke-linecap:round}
+.res .rm-ai{stroke:var(--r-ai);stroke-width:2.5;stroke-linecap:round}
+.res .you{fill:var(--ink);stroke:var(--surface);stroke-width:1.5}
 </style>
 
 <div class="shell">
@@ -809,6 +829,7 @@ td.num{text-align:center}
       '<div class="introfacts"><dl class="facts">' +
         '<div><dt>Who we are</dt><dd>Dr Reinaldo Lee Pereira (Heriot-Watt University, UK) and Dr Mak Đukan (Forschungszentrum Jülich, Germany)</dd></div>' +
         '<div><dt>Time needed</dt><dd>8–15 minutes</dd></div>' +
+        '<div><dt>After you submit</dt><dd>See how your answers compare.</dd></div>' +
         '<div><dt>Your data</dt><dd>We do not ask for your name. Results are published only in aggregate.</dd></div>' +
         '<div><dt>Contact</dt><dd><span class="contact">' + esc(CONTACT) + '</span><br><span class="contact">' + esc(FZJ_CONTACT) + '</span></dd></div>' +
       '</dl>' +
@@ -1318,14 +1339,14 @@ td.num{text-align:center}
         '<button class="btn" id="nextresp" type="button">Start next response</button>' + partList() + '</div>';
     } else if (d.saved) {
       html = '<div class="card"><span class="tag part">Finished</span><h2>Thank you for your time!</h2><p>Your answers are saved.</p>' +
-        interviewBlock() + preprintBlock() +
+        resSlot() + interviewBlock() + preprintBlock() +
         '<button class="btn ghost" id="another" type="button">Evaluate another technology</button>' + backup + '</div>';
     } else {
       html = '<div class="card"><h2>One last step: send your answers</h2>' +
         '<p class="small">Copy the code below and email it to <span class="contact">' + esc(CONTACT) + '</span>. It contains only your answers.</p>' +
         '<textarea class="code-box" id="code" readonly></textarea>' +
         '<div class="row"><span class="status" id="cs"></span><button class="btn sm" id="copy" type="button">Copy</button></div>' +
-        '<h2>Thank you for your time!</h2>' + interviewBlock() + preprintBlock() +
+        '<h2>Thank you for your time!</h2>' + (asInterviewer ? '' : resSlot()) + interviewBlock() + preprintBlock() +
         '<button class="btn ghost" id="another" type="button">Evaluate another technology</button></div>';
     }
     app.innerHTML = html;
@@ -1340,6 +1361,110 @@ td.num{text-align:center}
       });
     }
     bindInterview(); bindPreprint(); bindParts();
+    if (document.getElementById("res")) loadResults().then(drawRes, noRes);
+  }
+
+  // ---------------- thank-you screen: the respondent's own answers against other respondents
+  // results.json (same folder) holds aggregates only: per group (experts, ai) and technology the quartiles
+  // [q1, median, q3] of the baseline ratings (sa, 0–10), of the variant changes (cp / ch, −2…+2) and of the implied
+  // discount rate (%). A group is drawn only when its n reaches min_n. Nothing is sent; failure shows nothing.
+  var RLAB = {TEC:"Technology", PRI:"Price", POL:"Policy", CUR:"Supply chain", CON:"Cost", CPT:"Counterparty", SOC:"Permitting"};
+  var GRP = [["experts","Experts","ex"],["ai","AI","ai"]];
+  var resP = null, resData = null, resTm = null;
+  function resSlot(){ return '<section class="res" id="res" hidden></section>'; }
+  function loadResults(){
+    if (!resP) resP = fetch("results.json", {cache:"no-cache"}).then(function(r){ if (!r.ok) throw new Error("results " + r.status); return r.json(); });
+    resP.catch(function(){ resP = null; });
+    return resP;
+  }
+  function noRes(){ var el = document.getElementById("res"); if (el) { el.innerHTML = ""; el.hidden = true; } }
+  function drawRes(R){
+    var el = document.getElementById("res"); if (!el) return;
+    var h = "";
+    try { el.hidden = false; h = resHtml(R, Math.floor(el.getBoundingClientRect().width)); } catch (e) { h = ""; }
+    el.innerHTML = h; el.hidden = !h; resData = h ? R : null;
+  }
+  window.addEventListener("resize", function(){ clearTimeout(resTm); resTm = setTimeout(function(){ if (resData && document.getElementById("res")) drawRes(resData); }, 120); });
+  function fin(x){ return typeof x === "number" && isFinite(x); }
+  function trio(a){ return Array.isArray(a) && a.length === 3 && a.every(fin) && a[0] <= a[1] && a[1] <= a[2]; }
+  function fmt(x){ var r = Math.round(x * 100) / 100; return String(r).replace("-", "−"); }
+  function niceAxis(lo, hi){
+    if (hi - lo < 1e-9) { lo -= 1; hi += 1; }
+    var raw = (hi - lo) / 4, p = Math.pow(10, Math.floor(Math.log10(raw))), st = 10 * p;
+    [1, 2, 2.5, 5].some(function(m){ if (m * p >= raw) { st = m * p; return true; } return false; });
+    var a = Math.floor(lo / st + 1e-9) * st, b = Math.ceil(hi / st - 1e-9) * st, t = [];
+    for (var v = a; v <= b + st / 2; v += st) t.push({v:Math.round(v * 1000) / 1000});
+    return {min:a, max:b, ticks:t};
+  }
+  // One figure: rows of group bars (median + interquartile range) and the respondent's dot.
+  function rchart(o){
+    var W = Math.max(260, o.W || 0), narrow = W < 420, lw = narrow ? 86 : 104, x0 = lw + 10, x1 = W - 10;
+    var RH = 26, top = 2, ay = top + o.rows.length * RH, H = ay + 17;
+    function X(v){ return x0 + (Math.max(o.min, Math.min(o.max, v)) - o.min) / (o.max - o.min) * (x1 - x0); }
+    function n2(x){ return Math.round(x * 10) / 10; }
+    var s = '';
+    o.ticks.forEach(function(t, i){
+      var x = n2(X(t.v)), an = t.anchor || "middle", lx = an === "start" ? x - 3 : an === "end" ? x + 3 : x;
+      s += '<line class="rg' + (t.ref ? ' r0' : '') + '" x1="' + x + '" x2="' + x + '" y1="' + top + '" y2="' + ay + '"/>' +
+        '<text class="rt" x="' + n2(lx) + '" y="' + (ay + 13) + '" text-anchor="' + an + '">' + esc(t.label != null ? t.label : fmt(t.v)) + '</text>';
+    });
+    o.rows.forEach(function(r, i){
+      var cy = top + i * RH + RH / 2;
+      s += '<g class="rrow" data-k="' + r.k + '"><text class="rl" x="0" y="' + (cy + 4) + '">' + esc(r.label) + '</text>';
+      r.marks.forEach(function(m){
+        var ex = m.c === "ex", h = ex ? 8 : 4, y = r.marks.length < 2 ? cy - 1 - h / 2 : ex ? cy - 7 : cy + 3, a = X(m.q[0]), b = X(m.q[2]), md = n2(X(m.q[1]));
+        var w = Math.max(3, b - a), ax = Math.min(a, (a + b) / 2 - w / 2);
+        s += '<g class="rmk" data-g="' + m.g + '" data-k="' + r.k + '" data-q="' + m.q.join(",") + '"><title>' + esc(m.name + ' · median ' + fmt(m.q[1]) + ' · IQR ' + fmt(m.q[0]) + '–' + fmt(m.q[2]) + ' · n ' + m.n) + '</title>' +
+          '<rect class="rb-' + m.c + '" x="' + n2(ax) + '" y="' + y + '" width="' + n2(w) + '" height="' + h + '" rx="2"/>' +
+          '<line class="rm-' + m.c + '" x1="' + md + '" x2="' + md + '" y1="' + (y - 2) + '" y2="' + (y + h + 2) + '"/></g>';
+      });
+      if (fin(r.you)) s += '<circle class="you" cx="' + n2(X(r.you)) + '" cy="' + (cy - 1) + '" r="5" data-k="' + r.k + '" data-v="' + r.you + '"><title>You · ' + esc(fmt(r.you)) + '</title></circle>';
+      s += '</g>';
+    });
+    return '<figure class="rfig" id="' + o.id + '"><figcaption>' + esc(o.label) + '</figcaption>' +
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(o.label) + '">' + s + '</svg></figure>';
+  }
+  function resHtml(R, W){
+    if (!R || R.format !== "cdr-risk-results/1" || !R.groups || typeof R.groups !== "object" || !fin(+R.min_n)) return "";
+    var t = S.cat, c = cat(), mn = +R.min_n; if (!c) return "";
+    var G = GRP.map(function(g){ var x = R.groups[g[0]] && R.groups[g[0]][t]; return x && fin(+x.n) && +x.n >= mn && x.sa ? {g:g[0], name:g[1], c:g[2], d:x} : null; }).filter(Boolean);
+    if (!G.length) return "";
+    var sa = S.ratings.sa || {}, v = partsOf(c)[1] || null;
+    var vr = v && !S.skip[v] && count(v) > 0 ? (S.ratings[v] || {}) : null;
+    var VG = vr ? G.filter(function(g){ var e = g.d[v]; return e && fin(+e.n) && +e.n >= mn; }) : [];
+    function marks(list, part, k){ return list.map(function(g){ var src = part === "sa" ? g.d.sa : g.d[part]; var q = src && src[k];
+      return trio(q) ? {g:g.g, name:g.name, c:g.c, q:q, n:part === "sa" ? g.d.n : g.d[part].n} : null; }).filter(Boolean); }
+    var out = [rchart({id:"rf-sa", label:"Risk rating", W:W, min:0, max:10, ticks:[{v:0},{v:5},{v:10}],
+      rows:RISKS.map(function(k){ return {k:k.id, label:RLAB[k.id], marks:marks(G, "sa", k.id), you:isRate(sa[k.id]) ? sa[k.id] : null}; })})];
+    var showV = VG.length > 0 && RISKS.some(function(k){ return marks(VG, v, k.id).length; });
+    if (showV) out.push(rchart({id:"rf-var", label:PLAB[v], W:W, min:-2, max:2,
+      ticks:[{v:-2, label:"Much lower", anchor:"start"},{v:0, label:"Same", ref:true},{v:2, label:"Much higher", anchor:"end"}],
+      rows:RISKS.map(function(k){ return {k:k.id, label:RLAB[k.id], marks:marks(VG, v, k.id), you:isChg(vr[k.id]) ? vr[k.id] : null}; })}));
+    // Implied discount rate: r = rf + crp + base + res_pp[tech] + Σ caps_k · s_k (s_k = rating / 10; a "not sure" or
+    // unanswered rating takes the experts' median if drawn, else the AI median). Variant: s_k = (rating + step · change) / 10.
+    var M = R.model || {}, caps = M.caps || {}, res = (M.res_pp && fin(M.res_pp[t])) ? M.res_pp[t] : 0;
+    var okM = fin(M.rf) && fin(M.crp) && fin(M.base) && fin(M.step) && RISKS.every(function(k){ return fin(caps[k.id]); });
+    if (okM) {
+      var b = {}; RISKS.forEach(function(k){
+        var x = isRate(sa[k.id]) ? sa[k.id] : null;
+        if (x == null) G.some(function(g){ var q = g.d.sa[k.id]; if (trio(q)) { x = q[1]; return true; } return false; });
+        b[k.id] = x == null ? 0 : x;
+      });
+      var cl = function(x){ return Math.max(0, Math.min(1, x)); };
+      var rate = function(chg){ return M.rf + M.crp + M.base + res + RISKS.reduce(function(a, k){
+        return a + caps[k.id] * cl((b[k.id] + (chg ? M.step * (isChg(chg[k.id]) ? chg[k.id] : 0) : 0)) / 10); }, 0); };
+      var rr = [{k:"sa", label:PLAB.sa, list:G, you:rate(null)}];
+      if (showV) rr.push({k:v, label:PLAB[v], list:VG, you:rate(vr)});
+      rr.forEach(function(r){ r.marks = r.list.map(function(g){ var q = g.d.rate && g.d.rate[r.k]; return trio(q) ? {g:g.g, name:g.name, c:g.c, q:q, n:r.k === "sa" ? g.d.n : g.d[r.k].n} : null; }).filter(Boolean); });
+      var all = []; rr.forEach(function(r){ all.push(r.you); r.marks.forEach(function(m){ all.push(m.q[0], m.q[2]); }); });
+      var ax = niceAxis(Math.min.apply(null, all), Math.max.apply(null, all));
+      out.push(rchart({id:"rf-rate", label:"Discount rate, %", W:W, min:ax.min, max:ax.max, ticks:ax.ticks, rows:rr}));
+    }
+    var shown = {}; out.join("").replace(/data-g="(\w+)"/g, function(m0, g){ shown[g] = 1; return m0; });
+    var leg = '<div class="rleg" aria-hidden="true"><span><svg width="12" height="12"><circle class="you" cx="6" cy="6" r="5"/></svg>You</span>' +
+      GRP.filter(function(g){ return shown[g[0]]; }).map(function(g){ var ex = g[2] === "ex", y = ex ? 2 : 4, h = ex ? 8 : 4;
+        return '<span data-g="' + g[0] + '"><svg width="24" height="12"><rect class="rb-' + g[2] + '" x="1" y="' + y + '" width="22" height="' + h + '" rx="2"/><line class="rm-' + g[2] + '" x1="12" x2="12" y1="' + (y - 2) + '" y2="' + (y + h + 2) + '"/></svg>' + g[1] + '</span>'; }).join("") + '</div>';
+    return leg + out.join("");
   }
 
   function go(dir){
