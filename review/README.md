@@ -17,7 +17,18 @@ All three ask the same project descriptions and discount-rate questions. The las
 answers split the risk premium, and "Review another format" restarts at the format page.
 
 The file is generated; do not edit it here. Source: private repository `RJLP-hw-uk/cdr-cost-of-capital`,
-branch `survey-v10-copy-and-simulation`, commit 7035246: `survey/v11_preview/template.html`,
+branch `survey-review-results`, commit bb09785 (from `survey-v10-copy-and-simulation`): `survey/v11_preview/template.html`,
 `v11_text.json`, `v11_overrides.json`, built with `python code/survey_sim/build_preview.py`. The design,
 the simulation comparing the formats and the expert reviews are in the same repository
 (`survey/METHODOLOGY.md`, `results/survey_sim/formats/`, `survey/reviews/`).
+
+## Results preview after Submit
+
+The thank-you screen shows what the results will look like, from AI respondents only (Claude Sonnet,
+4 roles × 3 expertise classes, run v10_2026-11-01 and its AHP repeat v10ahp_2026-11-01). For the
+reviewer's technology (selectable): the discount-rate build-up for each answer method (rating scale;
+AHP on the Saaty scale; the same AHP answers on the balanced scale) with the similar-industry WACC,
+the change with the co-product or co-host split by risk, each risk's share of the baseline risk, and
+how far the methods agree. `results_preview.json` holds aggregates only (means and quartiles), written
+by `code/agents/elicitation/v10/export_review.py` on branch `v10-ai-calibration` of the same repository.
+The premium caps are not yet calibrated, so the rate levels are illustrative.
