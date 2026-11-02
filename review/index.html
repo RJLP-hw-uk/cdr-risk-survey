@@ -166,6 +166,30 @@ pre{font:.75rem/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(
 .sheet footer{padding:10px 18px;border-top:1px solid var(--rule);display:flex;justify-content:flex-end}
 .btn:focus-visible,.sb:focus-visible,.linkbtn:focus-visible,.info:focus-visible,.nsb:focus-visible,.chip:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media (max-width:480px){h2{font-size:1.12rem}h1{font-size:1.25rem}.btn{min-width:6.5rem}}
+/* Results preview after Submit (review page): AI aggregates, three figures and a method comparison */
+:root{--r-TEC:#2F6F8F;--r-PRI:#B5653A;--r-POL:#7A5C99;--r-CUR:#4E8C5A;--r-CON:#C69A2B;--r-CPT:#7E8791;--r-SOC:#B04F6E;--r-rf:#E4E8E5;--r-base:#C7CFC9;
+  --m-sl:#2F6F8F;--m-saaty:#B5653A;--m-bal:#7A5C99}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--r-TEC:#7FB6D1;--r-PRI:#E3926A;--r-POL:#B39AD1;--r-CUR:#8CC49A;--r-CON:#E2C066;--r-CPT:#AEB6BF;--r-SOC:#E08AA6;--r-rf:#2A3430;--r-base:#3B4741;
+  --m-sl:#7FB6D1;--m-saaty:#E3926A;--m-bal:#B39AD1}}
+:root[data-theme="dark"]{--r-TEC:#7FB6D1;--r-PRI:#E3926A;--r-POL:#B39AD1;--r-CUR:#8CC49A;--r-CON:#E2C066;--r-CPT:#AEB6BF;--r-SOC:#E08AA6;--r-rf:#2A3430;--r-base:#3B4741;
+  --m-sl:#7FB6D1;--m-saaty:#E3926A;--m-bal:#B39AD1}
+.res{display:grid;gap:14px;border-top:1px solid var(--rule);padding-top:12px}
+.res .rh{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;justify-content:space-between}
+.res select{font:inherit;font-size:.86rem;padding:4px 6px;border:1px solid var(--rule);border-radius:var(--r);background:var(--surface);color:var(--ink)}
+.res figure{margin:0;display:grid;gap:6px}
+.res figcaption{font-family:var(--f-display);font-size:.95rem;font-weight:600}
+.res .key{display:flex;flex-wrap:wrap;gap:2px 12px;font-size:.76rem;color:var(--ink-2)}
+.res .key span{display:inline-flex;align-items:center;gap:5px}
+.res .key i{display:inline-block;width:10px;height:10px;border-radius:2px}
+.res svg{display:block;width:100%;height:auto}
+.res svg text{font-family:var(--f-body);fill:var(--ink)}
+.res svg .t2{fill:var(--ink-2)}
+.res table{border-collapse:collapse;width:100%;font-size:.82rem}
+.res th,.res td{padding:5px 6px;border-bottom:1px solid var(--rule);text-align:right;white-space:nowrap}
+.res th:first-child,.res td:first-child{text-align:left;white-space:normal;min-width:9rem}
+.res th{white-space:normal}
+.res th{font-size:.72rem;color:var(--ink-2);font-weight:700}
+.res .tw{overflow-x:auto}
 </style>
 </head>
 <body>
@@ -422,6 +446,7 @@ const VIEW = {
     return `<div class="card"><span class="tag part">Finished</span><h2>${esc(T.done_q)}</h2>
     <p>Your response number is <b class="contact">${rid}</b>. Quote it if you want your answers withdrawn. ${NEW}</p>
     <p class="small muted">${esc(T.done_offers)} This preview stored nothing.</p>
+    ${REVIEW ? '<section class="res" id="res" hidden aria-label="Results preview"></section>' : ''}
     ${REVIEW ? `<button class="btn" id="another" type="button">${esc(T.review.again)}</button>` : ''}
     <button class="btn ghost" id="restart" type="button">Start the preview again</button></div>`;
   }
@@ -484,10 +509,107 @@ function onAnswer(el, fn){
   el.addEventListener('touchend', e => { const p = e.changedTouches[0]; if (t0 && Math.abs(p.clientX - t0[0]) < 10 && Math.abs(p.clientY - t0[1]) < 10) fn(el); t0 = null; }, {passive:true});
 }
 
+// ---------------- results preview after Submit (review page only): aggregates of the AI respondents, no individual answers
+const PREV = {data:null, tech:null};
+const PK = ['TEC','PRI','POL','CUR','CON','CPT','SOC'];
+const PL = {TEC:'Technology',PRI:'Price',POL:'Policy',CUR:'Supply chain',CON:'Cost',CPT:'Counterparty',SOC:'Permitting'};
+const PM = ['sl','saaty','bal'];
+function svgEl(n, a, t){ const e = document.createElementNS('http://www.w3.org/2000/svg', n); for (const k in a) e.setAttribute(k, a[k]); if (t != null) e.textContent = t; return e; }
+function preview(){
+  const box = document.getElementById('res'); if (!box) return;
+  const go = d => { PREV.data = d; PREV.tech = PREV.tech || (d.techs[S.tech] ? S.tech : Object.keys(d.techs)[0]); drawPreview(); };
+  if (PREV.data) return go(PREV.data);
+  fetch('results_preview.json', {cache:'no-cache'}).then(r => r.ok ? r.json() : null).then(d => { if (d && d.techs) go(d); }).catch(() => {});
+}
+function drawPreview(){
+  const box = document.getElementById('res'), d = PREV.data, c = PREV.tech, t = d.techs[c], M = d.model, f1 = x => (Math.round(x * 10) / 10).toFixed(1);
+  const v = S.tech === c && S.v && t.m.sl.d[S.v] ? S.v : ['cp','ch'].find(x => t.m.sl.d[x]) || null;
+  const SHORT = {sl:'Rating scale', saaty:'AHP, Saaty', bal:'AHP, balanced'};
+  const sum = o => PK.reduce((a, k) => a + o[k], 0), base = M.rf + M.crp + M.base;
+  const opts = Object.keys(d.techs).map(id => `<option value="${id}"${id === c ? ' selected' : ''}>${esc(CB[id] ? CB[id].name : id)}</option>`).join('');
+  const riskKey = '<div class="key"><span><i style="background:var(--r-rf);outline:1px solid var(--rule)"></i>Risk-free</span><span><i style="background:var(--r-base)"></i>Base</span>' +
+    PK.map(k => `<span><i style="background:var(--r-${k})"></i>${PL[k]}</span>`).join('') + (t.wacc ? '<span><i style="background:var(--ink);transform:rotate(45deg);width:8px;height:8px"></i>Similar industry</span>' : '') + '</div>';
+  const mKey = '<div class="key">' + PM.map(m => `<span><i style="background:var(--m-${m});border-radius:50%"></i>${esc(d.methods[m])}</span>`).join('') + '</div>';
+  const A = d.agreement;
+  box.innerHTML = `<div class="rh"><h3>AI respondents</h3><select id="ptech" aria-label="Technology">${opts}</select></div>
+    <figure><figcaption>Discount rate, %</figcaption>${riskKey}<svg id="pf1"></svg></figure>
+    ${v ? `<figure><figcaption>Change with ${esc(PLAB[v].toLowerCase())}, pp</figcaption><svg id="pf2"></svg></figure>` : ''}
+    <figure><figcaption>Share of baseline risk, %</figcaption>${mKey}<svg id="pf3"></svg></figure>
+    <div class="tw"><table><thead><tr><th>All technologies</th><th>Rating scale</th><th>AHP, Saaty</th><th>AHP, balanced</th></tr></thead><tbody>
+      <tr><td>Spread across risks, CV</td><td>${A.spread_cv_median.sl}</td><td>${A.spread_cv_median.saaty}</td><td>${A.spread_cv_median.bal}</td></tr>
+      <tr><td>Change with variant, mean |Δ|, pp</td><td>${A.variant_abs_change_mean_pp.sl}</td><td>${A.variant_abs_change_mean_pp.saaty}</td><td>${A.variant_abs_change_mean_pp.bal}</td></tr>
+      <tr><td>Risk order as on rating scale, median ρ</td><td>–</td><td colspan="2" style="text-align:center">${A.rank_corr_median}</td></tr>
+      <tr><td>Change in same direction as rating scale</td><td>–</td><td colspan="2" style="text-align:center">${Math.round(100 * A.direction.same)}%</td></tr>
+    </tbody></table></div>
+    <p class="small muted">${esc(d.source.model || "Claude Sonnet")}, ${esc(d.source.personas)}, fresh session per answer; ${t.m.sl.n} answers per method for this technology. Premium caps not yet calibrated.</p>`;
+  box.hidden = false;
+  const W = Math.max(300, Math.round(box.clientWidth || 560));
+  document.getElementById('ptech').onchange = e => { PREV.tech = e.target.value; drawPreview(); };
+
+  // figure 1: stacked build-up per method, baseline and variant
+  (function(){
+    const svg = document.getElementById('pf1'), rows = [];
+    PM.forEach(m => { rows.push({head:d.methods[m]}); rows.push({sub:'Baseline', p:t.m[m].sa}); if (v && t.m[m].var[v]) rows.push({sub:PLAB[v], p:t.m[m].var[v]}); });
+    const hi = Math.ceil(Math.max(...rows.filter(r => r.p).map(r => base + sum(r.p)), t.wacc || 0) / 2) * 2, L = 74, R = 34, top = 4;
+    const x = val => L + val / hi * (W - L - R), ys = []; let yy = top; rows.forEach(r => { ys.push(yy); yy += r.head ? 18 : 24; }); const H = yy + 20;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    for (let g = 0; g <= hi; g += 2){ svg.appendChild(svgEl('line', {x1:x(g), x2:x(g), y1:top, y2:H - 18, stroke:'var(--rule)'})); svg.appendChild(svgEl('text', {x:x(g), y:H - 4, 'text-anchor':'middle', 'font-size':11, class:'t2'}, g)); }
+    rows.forEach((r, i) => {
+      if (r.head){ svg.appendChild(svgEl('text', {x:0, y:ys[i] + 13, 'font-size':12, 'font-weight':700}, r.head)); return; }
+      const y = ys[i] + 12; let x0 = 0;
+      svg.appendChild(svgEl('text', {x:L - 6, y:y + 4, 'text-anchor':'end', 'font-size':12, class:'t2'}, r.sub));
+      [['rf', M.rf + M.crp, 'var(--r-rf)'], ['base', M.base, 'var(--r-base)']].concat(PK.map(k => [k, r.p[k], `var(--r-${k})`])).forEach(sg => {
+        const e = svgEl('rect', {x:x(x0), y:y - 8, width:Math.max(0, x(x0 + sg[1]) - x(x0)), height:16, fill:sg[2], stroke:'var(--surface)', 'stroke-width':0.6});
+        e.appendChild(svgEl('title', {}, (PL[sg[0]] || (sg[0] === 'rf' ? 'Risk-free' : 'Base premium')) + ': ' + f1(sg[1]))); svg.appendChild(e); x0 += sg[1]; });
+      svg.appendChild(svgEl('text', {x:x(x0) + 5, y:y + 4, 'font-size':11.5}, f1(x0)));
+      if (t.wacc){ const cx = x(t.wacc); svg.appendChild(svgEl('rect', {x:cx - 4, y:y - 4, width:8, height:8, fill:'var(--ink)', stroke:'var(--surface)', 'stroke-width':1.2, transform:`rotate(45 ${cx} ${y})`})); }
+    });
+  })();
+
+  // figure 2: change with the variant, split by risk, per method
+  if (v) (function(){
+    const svg = document.getElementById('pf2'), rows = PM.filter(m => t.m[m].d[v]).map(m => ({lab:SHORT[m], dd:t.m[m].d[v]}));
+    const pos = r => PK.reduce((a, k) => a + Math.max(0, r.dd[k]), 0), neg = r => PK.reduce((a, k) => a + Math.min(0, r.dd[k]), 0);
+    const lo = Math.min(-1, Math.floor(Math.min(...rows.map(neg)))), hi = Math.max(1, Math.ceil(Math.max(...rows.map(pos))));
+    const L = 100, R = 40, rh = 26, top = 4, x = val => L + (val - lo) / (hi - lo) * (W - L - R), H = top + rows.length * rh + 22;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    for (let g = lo; g <= hi; g++){ svg.appendChild(svgEl('line', {x1:x(g), x2:x(g), y1:top, y2:H - 18, stroke:g === 0 ? 'var(--ink-2)' : 'var(--rule)'})); svg.appendChild(svgEl('text', {x:x(g), y:H - 4, 'text-anchor':'middle', 'font-size':11, class:'t2'}, (g > 0 ? '+' : g < 0 ? '−' : '') + Math.abs(g))); }
+    rows.forEach((r, i) => {
+      const y = top + i * rh + rh / 2; let p = 0, n = 0;
+      svg.appendChild(svgEl('text', {x:L - 8, y:y + 4, 'text-anchor':'end', 'font-size':12}, r.lab));
+      PK.forEach(k => { const val = r.dd[k]; if (Math.abs(val) < 1e-6) return; const a = val > 0 ? p : n, b = a + val;
+        const e = svgEl('rect', {x:x(Math.min(a, b)), y:y - 8, width:Math.abs(x(b) - x(a)), height:16, fill:`var(--r-${k})`, stroke:'var(--surface)', 'stroke-width':0.6});
+        e.appendChild(svgEl('title', {}, PL[k] + ': ' + (val > 0 ? '+' : '−') + f1(Math.abs(val)))); svg.appendChild(e); if (val > 0) p = b; else n = b; });
+      const net = PK.reduce((a, k) => a + r.dd[k], 0);
+      svg.appendChild(svgEl('rect', {x:x(net) - 1.5, y:y - 11, width:3, height:22, fill:'var(--ink)'}));
+      svg.appendChild(svgEl('text', {x:x(Math.max(p, 0)) + 6, y:y + 4, 'font-size':11.5}, (net > 0 ? '+' : '−') + f1(Math.abs(net))));
+    });
+  })();
+
+  // figure 3: share of baseline risk per risk and method (median, IQR)
+  (function(){
+    const svg = document.getElementById('pf3'), L = 96, R = 12, gh = 9, rh = PM.length * gh + 10, top = 4;
+    const all = []; PM.forEach(m => PK.forEach(k => { const q = t.m[m].share[k]; if (q) all.push(q[2]); }));
+    const hi = Math.max(0.3, Math.ceil(Math.max(...all) * 20) / 20), x = val => L + val / hi * (W - L - R), H = top + PK.length * rh + 20;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    for (let g = 0; g <= hi + 1e-9; g += 0.1){ svg.appendChild(svgEl('line', {x1:x(g), x2:x(g), y1:top, y2:H - 16, stroke:'var(--rule)'})); svg.appendChild(svgEl('text', {x:x(g), y:H - 3, 'text-anchor':'middle', 'font-size':11, class:'t2'}, Math.round(g * 100))); }
+    svg.appendChild(svgEl('line', {x1:x(1 / 7), x2:x(1 / 7), y1:top, y2:H - 16, stroke:'var(--ink-2)', 'stroke-dasharray':'3 3'}));
+    PK.forEach((k, j) => {
+      const y0 = top + j * rh;
+      svg.appendChild(svgEl('text', {x:L - 8, y:y0 + rh / 2 + 3, 'text-anchor':'end', 'font-size':12}, PL[k]));
+      PM.forEach((m, gi) => { const q = t.m[m].share[k]; if (!q) return; const y = y0 + 5 + gi * gh + gh / 2;
+        svg.appendChild(svgEl('line', {x1:x(q[0]), x2:x(q[2]), y1:y, y2:y, stroke:`var(--m-${m})`, 'stroke-width':3, 'stroke-linecap':'round'}));
+        const dt = svgEl('circle', {cx:x(q[1]), cy:y, r:3.6, fill:`var(--m-${m})`, stroke:'var(--surface)', 'stroke-width':1});
+        dt.appendChild(svgEl('title', {}, d.methods[m] + ', ' + PL[k] + ': ' + Math.round(q[1] * 100) + '%')); svg.appendChild(dt); });
+    });
+  })();
+}
+
 function bind(){
   const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
   if (S.done){
     $('#restart').onclick = () => location.reload();
+    if (REVIEW) preview();
     const an = $('#another');
     if (an) an.onclick = () => { Object.assign(S, {done:false, step:'method', fmt:null, base:{}, chg:{}, rate:{}, vrate:{}, wind:{}, basis:null, how:null,
       finby:{rate:null, vrate:null}, country:null, bws:{}, ahp:{base:{}, var:{}}, comment:'', warned:false}); render(); };
