@@ -24,8 +24,9 @@ the simulation comparing the formats and the expert reviews are in the same repo
 
 ## Results preview after Submit
 
-The thank-you screen shows what the results will look like, from AI respondents only (Claude Sonnet,
-4 roles × 3 expertise classes, run v10_2026-11-01 and its AHP repeat v10ahp_2026-11-01). For the
+The thank-you screen shows what the results will look like, from AI respondents only (Claude Opus,
+fresh session per answer, 4 roles × 3 expertise classes; run v10opus_2026-11-02 and its AHP repeat
+v10ahpopus_2026-11-02, the settings chosen on the published-rate benchmark). For the
 reviewer's technology (selectable): the discount-rate build-up for each answer method (rating scale;
 AHP on the Saaty scale; the same AHP answers on the balanced scale) with the similar-industry WACC,
 the change with the co-product or co-host split by risk, each risk's share of the baseline risk, and

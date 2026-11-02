@@ -541,7 +541,7 @@ function drawPreview(){
       <tr><td>Risk order as on rating scale, median ρ</td><td>–</td><td colspan="2" style="text-align:center">${A.rank_corr_median}</td></tr>
       <tr><td>Change in same direction as rating scale</td><td>–</td><td colspan="2" style="text-align:center">${Math.round(100 * A.direction.same)}%</td></tr>
     </tbody></table></div>
-    <p class="small muted">Claude Sonnet, ${esc(d.source.personas)}; ${t.m.sl.n} answers per method for this technology. Premium caps not yet calibrated.</p>`;
+    <p class="small muted">${esc(d.source.model || "Claude Sonnet")}, ${esc(d.source.personas)}, fresh session per answer; ${t.m.sl.n} answers per method for this technology. Premium caps not yet calibrated.</p>`;
   box.hidden = false;
   const W = Math.max(300, Math.round(box.clientWidth || 560));
   document.getElementById('ptech').onchange = e => { PREV.tech = e.target.value; drawPreview(); };
