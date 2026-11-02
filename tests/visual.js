@@ -6,14 +6,16 @@ const server = http.createServer((req, res) => {
   const rel = decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/, '') || 'index.html';
   const file = path.join(ROOT, rel);
   if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); return res.end(); }
-  res.writeHead(200, {'Content-Type': /\.html$/.test(file) ? 'text/html; charset=utf-8' : /\.js$/.test(file) ? 'text/javascript' : 'application/octet-stream'});
+  res.writeHead(200, {'Content-Type': /\.html$/.test(file) ? 'text/html; charset=utf-8' : /\.js$/.test(file) ? 'text/javascript' : /\.json$/.test(file) ? 'application/json' : 'application/octet-stream'});
   fs.createReadStream(file).pipe(res);
 });
+// Bundled Chromium if installed (npx playwright install chromium), otherwise the system Chrome (CHROME_PATH or /usr/bin/google-chrome).
+async function launchBrowser(){ try { return await chromium.launch(); } catch (e) { return chromium.launch({executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome'}); } }
 const listening = new Promise(r => server.listen(0, '127.0.0.1', () => r(server.address().port)));
 let PAGE;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let fails=0; const check=(c,m)=>{ if(!c){fails++; console.log('  FAIL: '+m);} };
-(async()=>{ PAGE='http://127.0.0.1:'+(await listening)+'/index.html'; const b=await chromium.launch();
+(async()=>{ PAGE='http://127.0.0.1:'+(await listening)+'/index.html'; const b=await launchBrowser();
  for (const [w,h] of [[1366,768],[1280,720],[1536,864],[1920,1080],[390,844],[360,740]]) {
   for (const catId of ['cew','erw']) {
    const ctx=await b.newContext({viewport:{width:w,height:h}}); const p=await ctx.newPage();
