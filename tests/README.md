@@ -10,4 +10,4 @@ node tests/visual.js   # fixed layout: Back/Next never move, baseline sliders ke
 
 `mock.js` stands in for the claude.ai runtime (database, user, downloads) so the same page can be tested as a claude.ai artifact.
 
-`results.fixture.json` holds plausible aggregates for all 11 technologies (format `cdr-risk-results/1`; experts n = 6 only for dac_ss and biochar, AI n = 12 everywhere). `run.js` serves it in place of `results.json`, so the tests do not depend on the root `results.json`, which is a copy of the fixture (`"updated": "fixture"`) until real aggregates replace it.
+`results.fixture.json` holds plausible aggregates for all 12 technologies (format `cdr-risk-results/1`; experts n = 6 only for dac_ss and biochar, AI n = 12 everywhere). `run.js` serves it in place of `results.json`, so the tests do not depend on the root `results.json`, which is a copy of the fixture (`"updated": "fixture"`) until real aggregates replace it.

@@ -205,11 +205,12 @@ async function baselineChecks(p, label){
   check(JSON.stringify((await state(p)).sector) === '[1,2]', 'two workplaces stored');
   await clickNext(p);
   const rk0 = await p.$$eval('.trk', e => e.map(x => x.dataset.t).join(','));
-  check(rk0 === 'dac_ss,dac_ls,dac_ec,beccs,biochar,erw,cew,oae_ec,oae_min,ccs_pow,ccs_ind', 'ranking page lists the same technologies');
+  check(rk0 === 'dac_ss,dac_ls,dac_ec,beccs,biochar,erw,min,cew,oae_ec,oae_min,ccs_pow,ccs_ind', 'ranking page lists the same technologies');
   await clickNext(p);
   const ids0 = await p.$$eval('input[name="cat"]', e => e.map(x => x.value).join(','));
-  check(await p.$$eval('.opts.cats small', e => e.length === 11 && e.every(x => x.textContent.startsWith('e.g., '))), 'every technology has an e.g., description');
-  check(ids0 === 'dac_ss,dac_ls,dac_ec,beccs,biochar,erw,cew,oae_ec,oae_min,ccs_pow,ccs_ind', 'agreed technology list (' + ids0 + ')');
+  check(await p.$$eval('.opts.cats small', e => e.length === 12 && e.every(x => x.textContent.startsWith('e.g., '))), 'every technology has an e.g., description');
+  check(await p.$eval('input[name="cat"][value="min"]', e => !!e) && await p.$$eval('.opts.cats small', e => e.some(x => x.textContent === 'e.g., biogenic CO₂ bound in steel slag')), 'v11: CO₂ mineralisation is offered (id min)');
+  check(ids0 === 'dac_ss,dac_ls,dac_ec,beccs,biochar,erw,min,cew,oae_ec,oae_min,ccs_pow,ccs_ind', 'agreed technology list (' + ids0 + ')');
   check(p.errors.length === 0, 'no page errors on intro: ' + p.errors.join(' | '));
   await ctx.close();
 
@@ -700,7 +701,7 @@ async function baselineChecks(p, label){
   console.log('S9 results figures');
   const ROOTRES = JSON.parse(fs.readFileSync(path.join(ROOT, 'results.json'), 'utf8'));
   check(ROOTRES.format === 'cdr-risk-results/1' && ROOTRES.updated === 'fixture' ? JSON.stringify(ROOTRES) === JSON.stringify(FIX) : ROOTRES.format === 'cdr-risk-results/1', 'root results.json is in the results format (and equals the fixture while marked "fixture")');
-  check(Object.keys(FIX.groups.ai).join() === 'dac_ss,dac_ls,dac_ec,beccs,biochar,erw,cew,oae_ec,oae_min,ccs_pow,ccs_ind', 'fixture covers all 11 technologies');
+  check(Object.keys(FIX.groups.ai).join() === 'dac_ss,dac_ls,dac_ec,beccs,biochar,erw,min,cew,oae_ec,oae_min,ccs_pow,ccs_ind', 'fixture covers all 12 technologies');
   const SA9 = {TEC:7, PRI:4, POL:'ns', CUR:2, CON:9, CPT:5, SOC:3};
   const CP9 = {TEC:-1, PRI:-2, POL:0, CUR:1, CON:0, CPT:-1};   // SOC unanswered -> change 0
   const CH9 = {TEC:1, PRI:0, POL:-1, CUR:-2, CON:0, CPT:2, SOC:-1};

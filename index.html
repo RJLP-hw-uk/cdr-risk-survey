@@ -328,6 +328,21 @@ td.num{text-align:center}
         where:"Farmland, using farm-supply channels and spreading contractors",
         earns:"Removal credits; farmers may pay part of the rock cost in return for the yield benefit",
         owner:"Rock-weathering company"}},
+    {id:"min", group:"Rock", name:"CO₂ mineralisation", d:"e.g., biogenic CO₂ bound in steel slag", sa:"new:MIN_SA",
+      base:{d:"A plant buys steel slag and biogenic CO₂ from biogas plants, binds the CO₂ in the slag and landfills the carbonated slag.",
+        where:"Own industrial site; slag and liquefied CO₂ trucked in",
+        earns:"Removal credits only; the carbonated slag is landfilled at a cost",
+        owner:"Mineralisation company, financed as a stand-alone project"},
+      cp:{name:"Mineralisation plant selling a cement substitute", model:"new:MIN_SCM",
+        d:"The same plant grinds the carbonated slag and sells it to cement and concrete producers as a supplementary cementitious material instead of landfilling it.",
+        earns:"Removal credits, plus carbonated slag sold to cement and concrete producers",
+        same:"site, slag and CO₂ supply, process and owner."},
+      ch:{name:"Mineralisation at a steelworks", model:"new:MIN_STEEL",
+        d:"The same carbonation plant built inside a steelworks, using the slag as it leaves the furnace, and owned and financed by the steelmaker.",
+        where:"Inside an operating steelworks: its slag, site, power and permit; biogenic CO₂ trucked in",
+        earns:"Removal credits; the steelworks avoids slag disposal costs",
+        owner:"Steelmaker, on its own balance sheet",
+        same:"CO₂ supply, process and how removal is measured."}},
     {id:"cew", group:"Ocean", name:"OAE: coastal enhanced weathering", d:"e.g., olivine sand placed on beaches", sa:"CEW_SA",
       base:{d:"A developer buys olivine sand and places it on a beach or nearshore, paid only by removal credits.",
         where:"Coastal site, using the developer’s own contractors and marine permit",
@@ -531,6 +546,19 @@ td.num{text-align:center}
      "per": "regulators classify the rock dust as waste or set metal limits that restrict spreading it on farmland",
      "soc": "farmers or neighbours worry about dust or metals in the soil",
      "cer": "removal is hard to measure in soil, so the certifier deducts or delays credits"
+    }
+   },
+   "min": {
+    "sa": {
+     "tec": "the reactor binds less CO₂ per tonne of slag than designed",
+     "pri": "removal credit prices fall below the level the project needs as new supply enters the market",
+     "pol": "a rule on which CO₂ sources count as removal, or on what counts as durable storage, changes",
+     "cur": "enough slag of suitable quality or biogenic CO₂ cannot be secured year-round, or CO₂ transport becomes more expensive",
+     "con": "the carbonation reactor and material handling cost more than planned",
+     "cpt": "a credit buyer or the slag or CO₂ supplier pulls out",
+     "per": "waste rules delay the permit to process or reuse slag",
+     "soc": "neighbours object to dust and truck traffic",
+     "cer": "the amount of CO₂ bound cannot be verified to the certifier’s standard"
     }
    },
    "cew": {
